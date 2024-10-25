@@ -87,4 +87,16 @@ suite('cpp-def-paster', () => {
 		const result = parser.parseClassDecl();
 		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"default","className":{"name":"Nest1","args":[{"name":"Nest2","args":[{"name":"double","args":[]}]}]}}]}', `bad parse`);
 	});
+	test('parser 9', () => {
+		const tokenizer = new x.Tokenizer("class EXPORT Happy:std::Nest1<std::Nest2<std::double>>{");
+		const parser = new x.Parser(tokenizer);
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"default","className":{"name":"std::Nest1","args":[{"name":"std::Nest2","args":[{"name":"std::double","args":[]}]}]}}]}', `bad parse`);
+	});
+	test('parser 10', () => {
+		const tokenizer = new x.Tokenizer("class Happy:std::Nest1<std::Nest2<std::double>>{");
+		const parser = new x.Parser(tokenizer);
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"default","className":{"name":"std::Nest1","args":[{"name":"std::Nest2","args":[{"name":"std::double","args":[]}]}]}}]}', `bad parse`);
+	});
 });
