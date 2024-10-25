@@ -1,3 +1,4 @@
+/* eslint-disable curly */
 import * as vscode from 'vscode';
 
 export enum TokenType {
@@ -16,6 +17,7 @@ export enum TokenType {
 	LAngleBracket,
 	RAngleBracket,
 	Comma,
+	Tilde
 }
 
 export class Token {
@@ -100,6 +102,8 @@ export class Tokenizer {
 			return this.sliceToken(m[0].length, TokenType.LAngleBracket);
 		} else if (m = this.text.match(/^\>/g)) {
 			return this.sliceToken(m[0].length, TokenType.RAngleBracket);
+		} else if (m = this.text.match(/^~/g)) {
+			return this.sliceToken(m[0].length, TokenType.Tilde);
 		}
 		return this.sliceToken(1, TokenType.Unknown);
 	}
@@ -128,6 +132,18 @@ type BaseDecl = { access: string, className: ClassName };
  * e.g. 'class MyClass {'
  */
 type ClassDecl = { className: string, attribute: string, bases: BaseDecl[] };
+
+/**
+ * A segment is a 'word' in a method decl. e.g.
+ * `__attribute__((visibility("default")))`, `std::xxx<int>`, `__stdcall`, `f()`, `const`, `MY_EXPORT`,
+ * are all segments.
+ */
+type Segment = { name: string, parenType: string | undefined, content: string | undefined }
+
+/**
+ * A segment-based method declaration.
+ */
+type MethodDecl = { nameSegment: number, segments: Segment[] }
 
 /**
  * Parses part of the C++ language.
@@ -263,17 +279,21 @@ export class Parser {
 	}
 
 	/**
-	 * Parses 'ns::A', 'ns1::ns2::B', 'C'
+	 * Parses 'A', 'ns::B', 'ns1::ns2::C', '~D'
 	 */
 	private parseQualifiedName() {
 		let name = "";
 		let token;
+		let lastTokenType = undefined;
+		const allowedTokens = [TokenType.Ident, TokenType.ColumnColumn, TokenType.Tilde]
 		while (token = this.nextGoodToken()) {
-			if (token.type !== TokenType.Ident && token.type !== TokenType.ColumnColumn) {
+			if (!allowedTokens.includes(token.type) ||
+				token.type === lastTokenType) {
 				this.tokenizer.prepend(token.text);
 				break;
 			}
 			name = name + token.text;
+			lastTokenType = token.type;
 		}
 		if (name === "") {
 			return undefined;
@@ -310,20 +330,192 @@ export class Parser {
 		return args;
 	}
 
-	public parseMethodDecl() {
+	public parseMethodDecl(): MethodDecl | undefined {
+		let seg;
+		let segments: Segment[] = [];
+		while (seg = this.parseSegment()) {
+			segments.push(seg);
+			const semi = this.nextGoodToken();
+			if (!semi)
+				return undefined;
+			if (semi.type === TokenType.SemiColumn) {
+				for (let i = segments.length - 1; i >= 0; i--) {
+					const currentSegment = segments[i];
+					if (currentSegment.parenType === "()") {
+						return { nameSegment: i, segments: segments };
+					}
+				}
+				return undefined;
+			} else {
+				this.tokenizer.prepend(semi.text);
+			}
+		}
+		return undefined;
+	}
 
+	private parseSegment(): Segment | undefined {
+		const qualName = this.parseQualifiedName();
+		if (!qualName)
+			return undefined;
+		const token = this.nextGoodToken();
+		if (!token)
+			return { name: qualName, parenType: undefined, content: undefined };
+
+		let rightParen = undefined;
+		let parenType = undefined;
+		if (token.type === TokenType.LParen) {
+			rightParen = TokenType.RParen;
+			parenType = "()";
+		} else if (token.type === TokenType.LAngleBracket) {
+			rightParen = TokenType.RAngleBracket;
+			parenType = "<>";
+		}
+
+		// with args. e.g. FOO(BAR<int>, BAZ)
+		if (rightParen) {
+			this.tokenizer.prepend(token.text);
+			const r = this.parseSegmentArgs(token.type, rightParen);
+			if (r === undefined)
+				return undefined;
+			return { name: qualName, parenType: parenType, content: r };
+		}
+		// no args. e.g. FOO
+		this.tokenizer.prepend(token.text);
+		return { name: qualName, parenType: parenType, content: undefined };
+	}
+
+	private parseSegmentArgs(leftParen: TokenType, rightParen: TokenType): string | undefined {
+		const begin = this.nextGoodToken();
+		if (!begin || begin.type !== leftParen)
+			return undefined;
+		let token;
+		let owed = 1;
+		let content = "";
+		while (token = this.tokenizer.next()) {
+			if (token.type === leftParen) {
+				content += token.text;
+				owed++;
+			}
+			else if (token.type === rightParen) {
+				owed--;
+				if (owed === 0)
+					return content;
+			} else {
+				content += token.text;
+			}
+		}
+		return undefined;
 	}
 }
 
-function extractClassName(text: string) {
-	const tokenizer = new Tokenizer(text);
-	const parser = new Parser(tokenizer);
-	let r;
-	if (r = parser.parseClassDecl()) {
-		return r.className;
+export function defineMethod(classDeclContext: string, methodDeclContext: string) {
+	let tokenizer = new Tokenizer(classDeclContext);
+	let parser = new Parser(tokenizer);
+	let classDecl = parser.parseClassDecl();
+	if (!classDecl)
+		return undefined;
+	tokenizer = new Tokenizer(methodDeclContext);
+	parser = new Parser(tokenizer);
+	let methodDecl = parser.parseMethodDecl();
+	if (!methodDecl)
+		return undefined;
+	let index = 0;
+	let decl = "";
+	const removedSegments = ["override", "virtual", "explicit"];
+	for (let segment of methodDecl.segments) {
+		if (index === methodDecl.nameSegment) {
+			decl += classDecl.className;
+			decl += "::";
+		}
+		let newText = "";
+		newText += segment.name;
+		if (segment.parenType)
+			newText += segment.parenType[0];
+		if (segment.content)
+			newText += segment.content;
+		if (segment.parenType)
+			newText += segment.parenType[1];
+
+		if (!removedSegments.includes(newText)) {
+			decl += newText;
+			decl += " ";
+		}
+
+		index++;
+	}
+	return decl;
+}
+
+type Context = { begin: number; end: number; text: string }
+
+/**
+ * Find which class the cursor is currently in. Return the class declaration's prefix.
+ * @param editor 
+ * @returns 
+ */ 
+function getClassDeclContext(editor: vscode.TextEditor) {
+	const cursorPos = editor.selection.active;
+	const document = editor.document;
+	const textUpToCursor = document.getText(new vscode.Range(new vscode.Position(0, 0), cursorPos));
+	const regex = /(struct|class)[^;]+?{/g;
+	const contexts: Context[] = [];
+	const findContext = (pos: number) => {
+		for (const context of contexts) {
+			if (context.end - 1 === pos)
+				return context;
+		}
+		return undefined;
+	};
+	let match;
+	while ((match = regex.exec(textUpToCursor)) !== null) {
+		contexts.push({
+			begin: match.index,
+			end: match.index + match[0].length,
+			text: match[0],
+		});
+	}
+	if (!contexts)
+		return undefined;
+	let contextStack : { context: Context; layer: number} [] = [];
+	let layer = 0;
+	for (let pos = contexts[0].begin; pos < textUpToCursor.length; pos++) {
+		const ch = textUpToCursor[pos];
+		if (ch === "{") {
+			layer++;
+			let c;
+			if (c = findContext(pos)) {
+				contextStack.push({context: c, layer: layer});
+			}
+		}
+		else if (ch === "}") {
+			if (contextStack && contextStack[contextStack.length - 1].layer === layer) {
+				contextStack.pop();
+			}
+			layer--;
+		}
+	}
+	if (contextStack)
+	{
+		// todo: support nested class
+		return contextStack[contextStack.length - 1].context.text;
 	}
 	return undefined;
 }
+
+function getMethodDeclContext(editor: vscode.TextEditor) {
+	const selection = editor.selection; // Get the current selection
+	let text;
+	if (selection.isEmpty) {
+		// Get the line of text where the cursor is
+		const position = selection.active; // Current cursor position
+		text = editor.document.lineAt(position.line).text; // Line text
+	} else {
+		// Get the selected text
+		text = editor.document.getText(selection);
+	}
+	return text;
+}
+
 
 export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyAsDefinition', async () => {
@@ -332,21 +524,18 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.window.showErrorMessage('No active editor found.');
 			return;
 		}
-		const position = editor.selection.active;
-		const document = editor.document;
-		const textUpToCursor = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
-		// Broad matching. Find substrings starting with 'class' ending with '{'.
-		const pass1Matches = textUpToCursor.match(/(struct|class)[^;]+?{/g);
-		if (!pass1Matches) {
-			vscode.window.showInformationMessage(`Class not found in ${textUpToCursor}`);
+		const classDeclContext = getClassDeclContext(editor);
+		if (!classDeclContext) {
+			vscode.window.showErrorMessage('Cannot find class declaration context.');
 			return;
 		}
-		for (let pass1Match of pass1Matches) {
-			let name = extractClassName(pass1Match);
-			if (!name) { continue; }
-			vscode.window.showInformationMessage(`name = ${name}, excerpt = ${pass1Match}`);
+		const methodDeclContext = getMethodDeclContext(editor);
+		if (!methodDeclContext) {
+			vscode.window.showErrorMessage('Cannot find method declaration context.');
+			return;
 		}
-		vscode.window.showInformationMessage("done");
+		const def = defineMethod(classDeclContext, methodDeclContext);
+		vscode.window.showInformationMessage(`def = ${def}`);
 	});
 
 	context.subscriptions.push(disposable);
