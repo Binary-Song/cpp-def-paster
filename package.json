@@ -1,10 +1,10 @@
 {
   "name": "cpp-def-paster",
   "displayName": "C++ Definition Paster",
-  "description": "Copy your c++ declaration and paste out its definition!",
+  "description": "Quickly copy your C++ declarations and have their definitions ready to paste!",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.92.0"
+    "vscode": "^1.94.0"
   },
   "categories": [
     "Other"
@@ -14,8 +14,15 @@
   "contributes": {
     "commands": [
       {
-        "command": "cpp-def-paster.copyAsDefinition",
-        "title": "Copy as definition"
+        "command": "cpp-def-paster.copyDefinition",
+        "title": "Copy definition"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "cpp-def-paster.copyDefinition",
+        "key": "ctrl+alt+c",
+        "when": "editorTextFocus"
       }
     ]
   },
@@ -37,5 +44,9 @@
     "typescript": "^5.6.3",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Binary-Song/cpp-def-paster.git"
   }
 }
