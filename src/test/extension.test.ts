@@ -99,4 +99,18 @@ suite('cpp-def-paster', () => {
 		const result = parser.parseClassDecl();
 		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"default","className":{"name":"std::Nest1","args":[{"name":"std::Nest2","args":[{"name":"std::double","args":[]}]}]}}]}', `bad parse`);
 	});
+
+	test('parser 11', () => {
+		const tokenizer = new x.Tokenizer("__declspec('blablabla') void __stdcall f() const volatile noexcept wtf ;");
+		const parser = new x.Parser(tokenizer);
+		const result = parser.parseMethodDecl();
+		assert.strictEqual(JSON.stringify(result), `{"name":"f","segments":[{"name":"__declspec","parenType":"()","content":"'blablabla'"},{"name":"void"},{"name":"__stdcall"},{"name":"f","parenType":"()","content":""},{"name":"const"},{"name":"volatile"},{"name":"noexcept"},{"name":"wtf"}]}`, `bad parse`);
+	});
+
+	test('definition 1', () => {
+		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>>{";
+		let methodCtx = "virtual __declspec('blablabla') void __stdcall f() const volatile noexcept wtf ;";
+		const defn = x.defineMethod(classCtx, methodCtx);
+		assert.strictEqual(defn, "__declspec('blablabla') void __stdcall Happy::f() const volatile noexcept wtf ", `bad parse`);
+	});
 });
