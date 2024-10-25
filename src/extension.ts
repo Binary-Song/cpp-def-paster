@@ -27,6 +27,9 @@ export class Token {
 	}
 }
 
+/** 
+ * A simple C++ tokenizer.
+ */
 export class Tokenizer {
 	stack: string[];
 
@@ -35,30 +38,40 @@ export class Tokenizer {
 		this.stack.push(text);
 	}
 
+	/** 
+	 * Text to be tokenized.
+	 */
 	get text() {
-		return this.stack[this.stack.length - 1]
+		return this.stack[this.stack.length - 1];
 	}
 
 	set text(value: string) {
-		this.stack[this.stack.length - 1] = value
+		this.stack[this.stack.length - 1] = value;
 	}
 
 	public save() {
-		this.stack.push(this.text)
+		this.stack.push(this.text);
 	}
 
 	public restore() {
-		this.stack.pop()
+		this.stack.pop();
 	}
 
+	/** 
+	 * Adds to the front of text.
+	 */
 	public prepend(value: string) {
 		this.text = value + this.text;
 	}
 
+	/** 
+	 * Consumes some text and returns a token. If successful, a 
+	 * prefix of the text will be removed.
+	 */
 	public next() {
 		let m;
-		if (this.text.length == 0) {
-			return undefined
+		if (this.text.length === 0) {
+			return undefined;
 		} else if (m = this.text.match(/^\s+/g)) {
 			return this.sliceToken(m[0].length, TokenType.Space);
 		} else if (m = this.text.match(/^(class|struct)/g)) {
@@ -98,15 +111,27 @@ export class Tokenizer {
 	}
 }
 
-// Name of a class or an instance of class template.
-// e.g. 'MyClass', 'MyTemplatedClass<int>'
+/**
+ * The name of a class.
+ * e.g. 'MyClass', 'MyTemplatedClass<int>'
+ */
 type ClassName = { name: string, args: ClassName[] };
-// Base class declaration, part of the class declaration. e.g. 'public MyBase', 'private MyBase', 'MyBase'
-//     access: 'public' 'private' 'protected' or 'default' (no access modifier)
+
+/**
+ * Base class declaration, part of a class declaration.
+ * e.g. 'public MyBase' as in 'class MyClass : public MyBase'.
+ */
 type BaseDecl = { access: string, className: ClassName };
-// Class declaration up until left curly brace. e.g. 'class MyClass {'
+
+/**
+ * Class declaration. Goes up until a left curly brace.
+ * e.g. 'class MyClass {'
+ */
 type ClassDecl = { className: string, attribute: string, bases: BaseDecl[] };
 
+/**
+ * Parses part of the C++ language.
+ */
 export class Parser {
 
 	tokenizer: Tokenizer;
@@ -115,15 +140,10 @@ export class Parser {
 		this.tokenizer = tokenizer;
 	}
 
-	public parse(): ClassDecl | undefined {
-		return this.parseClassDecl()
-	}
-
 	private nextGoodToken(): Token | undefined {
 		let token;
 		while (token = this.tokenizer.next()) {
-			if (token.type != TokenType.Space)
-				return token;
+			if (token.type !== TokenType.Space) { return token; }
 		}
 		return undefined;
 	}
@@ -131,41 +151,35 @@ export class Parser {
 	//     class MyClass
 	//     class EXPORT_STUFF MyClass
 	private parseNameAndAttrInClassDecl() {
-		const classKw = this.nextGoodToken()
-		if (!classKw || classKw.type != TokenType.ClassKeyword)
-			return undefined;
-		const token1 = this.nextGoodToken()
-		if (!token1 || token1.type != TokenType.Ident)
-			return undefined;
-		const token2 = this.nextGoodToken()
-		if (!token2)
-			return { name: token1.text, attribute: "" }
-		if (token2.type != TokenType.Ident) {
+		const classKw = this.nextGoodToken();
+		if (!classKw || classKw.type !== TokenType.ClassKeyword) { return undefined; }
+		const token1 = this.nextGoodToken();
+		if (!token1 || token1.type !== TokenType.Ident) { return undefined; }
+		const token2 = this.nextGoodToken();
+		if (!token2) { return { name: token1.text, attribute: "" }; }
+		if (token2.type !== TokenType.Ident) {
 			this.tokenizer.prepend(token2.text);
-			return { name: token1.text, attribute: "" }
+			return { name: token1.text, attribute: "" };
 		}
-		return { name: token2.text, attribute: token1.text }
+		return { name: token2.text, attribute: token1.text };
 	}
 
 	// parses:
 	//     class MyClass {
 	//     class EXPORT_STUFF MyClass {
 	//     class MyClass : <base-list> {
-	private parseClassDecl(): ClassDecl | undefined {
+	public parseClassDecl(): ClassDecl | undefined {
 		const nameAndAttr = this.parseNameAndAttrInClassDecl();
-		if (!nameAndAttr)
-			return undefined;
-		const token = this.nextGoodToken()
-		if (!token)
-			return undefined;
+		if (!nameAndAttr) { return undefined; }
+		const token = this.nextGoodToken();
+		if (!token) { return undefined; }
 		// class A : ... {
 		//         \__ token
-		if (token.type == TokenType.Column) {
+		if (token.type === TokenType.Column) {
 			let bases;
 			if (bases = this.parseBaseList()) {
-				const brace = this.nextGoodToken()
-				if (!brace || brace.type != TokenType.LBrace)
-					return undefined;
+				const brace = this.nextGoodToken();
+				if (!brace || brace.type !== TokenType.LBrace) { return undefined; }
 				return {
 					className: nameAndAttr.name,
 					attribute: nameAndAttr.attribute,
@@ -176,31 +190,28 @@ export class Parser {
 		}
 		// class A {
 		//         \___ token
-		else if (token.type == TokenType.LBrace) {
+		else if (token.type === TokenType.LBrace) {
 			return {
 				className: nameAndAttr.name,
 				attribute: nameAndAttr.attribute,
 				bases: [],
 			};
 		}
-		else
-			return undefined;
+		else { return undefined; }
 	}
 
 	private parseCommaSeparatedList<Item>(parseItem: () => Item | undefined): Item[] | undefined {
-		let items: Item[] = []
+		let items: Item[] = [];
 		let count = 0;
 		while (count < 99) {
 			const item = parseItem();
-			if (!item)
-				return undefined;
+			if (!item) { return undefined; }
 			items.push(item);
 			let maybeComma = this.nextGoodToken();
-			if (!maybeComma)
-				return items
-			if (maybeComma.type != TokenType.Comma) {
-				this.tokenizer.prepend(maybeComma.text)
-				return items
+			if (!maybeComma) { return items; }
+			if (maybeComma.type !== TokenType.Comma) {
+				this.tokenizer.prepend(maybeComma.text);
+				return items;
 			}
 			count++;
 		}
@@ -222,8 +233,7 @@ export class Parser {
 	//     public TemplatedBase<int>
 	private parseBase(): BaseDecl | undefined {
 		const publicKwOrIdent = this.nextGoodToken();
-		if (!publicKwOrIdent)
-			return undefined;
+		if (!publicKwOrIdent) { return undefined; }
 		switch (publicKwOrIdent.type) {
 			case TokenType.PublicKeyword: {
 				let r;
@@ -258,22 +268,18 @@ export class Parser {
 	//     MyClassTemplate<int, double, ... , float, WTF<int> >
 	private parseClassName(): ClassName | undefined {
 		const ident = this.nextGoodToken();
-		if (!ident || ident.type != TokenType.Ident)
-			return undefined;
+		if (!ident || ident.type !== TokenType.Ident) { return undefined; }
 		const maybeLAngleBracket = this.nextGoodToken();
-		if (!maybeLAngleBracket)
-			return { name: ident.text, args: [] }
-		if (maybeLAngleBracket.type != TokenType.LAngleBracket) {
+		if (!maybeLAngleBracket) { return { name: ident.text, args: [] }; }
+		if (maybeLAngleBracket.type !== TokenType.LAngleBracket) {
 			this.tokenizer.prepend(maybeLAngleBracket.text);
-			return { name: ident.text, args: [] }
+			return { name: ident.text, args: [] };
 		}
 		const args = this.parseTemplateArgList();
-		if (!args)
-			return undefined;
+		if (!args) { return undefined; }
 		const rAngleBracket = this.nextGoodToken();
-		if (!rAngleBracket || rAngleBracket.type != TokenType.RAngleBracket)
-			return undefined;
-		return { name: ident.text, args: args }
+		if (!rAngleBracket || rAngleBracket.type !== TokenType.RAngleBracket) { return undefined; }
+		return { name: ident.text, args: args };
 	}
 
 	// parses:
@@ -290,8 +296,7 @@ function extractClassName(text: string) {
 	const tokenizer = new Tokenizer(text);
 	const parser = new Parser(tokenizer);
 	let r;
-	if (r = parser.parse())
-	{
+	if (r = parser.parse()) {
 		return r.className;
 	}
 	return undefined;
@@ -299,27 +304,26 @@ function extractClassName(text: string) {
 
 export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyAsDefinition', async () => {
-		const editor = vscode.window.activeTextEditor
+		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
-			vscode.window.showErrorMessage('No active editor found.')
-			return
+			vscode.window.showErrorMessage('No active editor found.');
+			return;
 		}
-		const position = editor.selection.active
-		const document = editor.document
-		const textUpToCursor = document.getText(new vscode.Range(new vscode.Position(0, 0), position))
+		const position = editor.selection.active;
+		const document = editor.document;
+		const textUpToCursor = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
 		// Broad matching. Find substrings starting with 'class' ending with '{'.
-		const pass1Matches = textUpToCursor.match(/(struct|class)[^;]+?{/g)
+		const pass1Matches = textUpToCursor.match(/(struct|class)[^;]+?{/g);
 		if (!pass1Matches) {
-			vscode.window.showInformationMessage(`Class not found in ${textUpToCursor}`)
+			vscode.window.showInformationMessage(`Class not found in ${textUpToCursor}`);
 			return;
 		}
 		for (let pass1Match of pass1Matches) {
-			let name = extractClassName(pass1Match)
-			if (!name)
-				continue
-			vscode.window.showInformationMessage(`name = ${name}, excerpt = ${pass1Match}`)
+			let name = extractClassName(pass1Match);
+			if (!name) { continue; }
+			vscode.window.showInformationMessage(`name = ${name}, excerpt = ${pass1Match}`);
 		}
-		vscode.window.showInformationMessage("done")
+		vscode.window.showInformationMessage("done");
 	});
 
 	context.subscriptions.push(disposable);

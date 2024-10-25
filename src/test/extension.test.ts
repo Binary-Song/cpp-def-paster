@@ -6,7 +6,7 @@ import * as x from '../extension';
 suite('cpp-def-paster', () => {
 	vscode.window.showInformationMessage('Start all tests.');
 	test('tokenizer 1', () => {
-		const tokenizer = new x.Tokenizer("class   FUNNY_EXPORT Class1 : public FOO<int, double>, Bar {} ;")
+		const tokenizer = new x.Tokenizer("class   FUNNY_EXPORT Class1 : public FOO<int, double>, Bar {} ;");
 		let token;
 		const expected: x.Token[] = [
 			new x.Token("class", x.TokenType.ClassKeyword),
@@ -25,67 +25,66 @@ suite('cpp-def-paster', () => {
 			new x.Token("{", x.TokenType.LBrace),
 			new x.Token("}", x.TokenType.RBrace),
 			new x.Token(";", x.TokenType.SemiColumn),
-		]
-		let actual: x.Token[] = []
+		];
+		let actual: x.Token[] = [];
 		while (token = tokenizer.next()) {
-			if (token.type != x.TokenType.Space)
-				actual.push(token)
+			if (token.type !== x.TokenType.Space) { actual.push(token); }
 		}
 
 		for (let i = 0; i < Math.min(actual.length, expected.length); i++) {
 			const expectedToken = expected[i];
 			const actualToken = actual[i];
-			assert.strictEqual(actualToken.text, expectedToken.text, `token text mismatch, index = ${i}`)
-			assert.strictEqual(actualToken.type, expectedToken.type, `token type mismatch, index = ${i}`)
+			assert.strictEqual(actualToken.text, expectedToken.text, `token text mismatch, index = ${i}`);
+			assert.strictEqual(actualToken.type, expectedToken.type, `token type mismatch, index = ${i}`);
 		}
-		assert.strictEqual(actual.length, expected.length)
+		assert.strictEqual(actual.length, expected.length);
 	});
 	test('parser 1', () => {
-		const tokenizer = new x.Tokenizer("class Happy : Base1<int> {};")
+		const tokenizer = new x.Tokenizer("class Happy : Base1<int> {};");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"default","className":{"name":"Base1","args":[{"name":"int","args":[]}]}}]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"default","className":{"name":"Base1","args":[{"name":"int","args":[]}]}}]}', `bad parse`);
 	});
 	test('parser 2', () => {
-		const tokenizer = new x.Tokenizer("class Happy {};")
+		const tokenizer = new x.Tokenizer("class Happy {};");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[]}', `bad parse`);
 	});
 	test('parser 3', () => {
-		const tokenizer = new x.Tokenizer("class Happy:public Base{")
+		const tokenizer = new x.Tokenizer("class Happy:public Base{");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"public","className":{"name":"Base","args":[]}}]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"public","className":{"name":"Base","args":[]}}]}', `bad parse`);
 	});
 	test('parser 4', () => {
-		const tokenizer = new x.Tokenizer("class Happy:Nest1<Nest2<double>>{")
+		const tokenizer = new x.Tokenizer("class Happy:Nest1<Nest2<double>>{");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"default","className":{"name":"Nest1","args":[{"name":"Nest2","args":[{"name":"double","args":[]}]}]}}]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"","bases":[{"access":"default","className":{"name":"Nest1","args":[{"name":"Nest2","args":[{"name":"double","args":[]}]}]}}]}', `bad parse`);
 	});
 	test('parser 5', () => {
-		const tokenizer = new x.Tokenizer("class EXPORT Happy : Base1<int> {};")
+		const tokenizer = new x.Tokenizer("class EXPORT Happy : Base1<int> {};");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"default","className":{"name":"Base1","args":[{"name":"int","args":[]}]}}]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"default","className":{"name":"Base1","args":[{"name":"int","args":[]}]}}]}', `bad parse`);
 	});
 	test('parser 6', () => {
-		const tokenizer = new x.Tokenizer("class EXPORT Happy {};")
+		const tokenizer = new x.Tokenizer("class EXPORT Happy {};");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[]}', `bad parse`);
 	});
 	test('parser 7', () => {
-		const tokenizer = new x.Tokenizer("class  EXPORT  Happy:public Base{")
+		const tokenizer = new x.Tokenizer("class  EXPORT  Happy:public Base{");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"public","className":{"name":"Base","args":[]}}]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"public","className":{"name":"Base","args":[]}}]}', `bad parse`);
 	});
 	test('parser 8', () => {
-		const tokenizer = new x.Tokenizer("class EXPORT Happy:Nest1<Nest2<double>>{")
+		const tokenizer = new x.Tokenizer("class EXPORT Happy:Nest1<Nest2<double>>{");
 		const parser = new x.Parser(tokenizer);
-		const result = parser.parse()
-		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"default","className":{"name":"Nest1","args":[{"name":"Nest2","args":[{"name":"double","args":[]}]}]}}]}', `bad parse`)
+		const result = parser.parseClassDecl();
+		assert.strictEqual(JSON.stringify(result), '{"className":"Happy","attribute":"EXPORT","bases":[{"access":"default","className":{"name":"Nest1","args":[{"name":"Nest2","args":[{"name":"double","args":[]}]}]}}]}', `bad parse`);
 	});
 });
