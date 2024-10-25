@@ -262,24 +262,43 @@ export class Parser {
 		return undefined;
 	}
 
+	/**
+	 * Parses 'ns::A', 'ns1::ns2::B', 'C'
+	 */
+	private parseQualifiedName() {
+		let name = "";
+		let token;
+		while (token = this.nextGoodToken()) {
+			if (token.type !== TokenType.Ident && token.type !== TokenType.ColumnColumn) {
+				this.tokenizer.prepend(token.text);
+				break;
+			}
+			name = name + token.text;
+		}
+		if (name === "") {
+			return undefined;
+		}
+		return name;
+	}
+
 	// parses:
 	//     MyClass
 	//     MyClassTemplate<int>
 	//     MyClassTemplate<int, double, ... , float, WTF<int> >
 	private parseClassName(): ClassName | undefined {
-		const ident = this.nextGoodToken();
-		if (!ident || ident.type !== TokenType.Ident) { return undefined; }
+		const ident = this.parseQualifiedName();
+		if (!ident) { return undefined; }
 		const maybeLAngleBracket = this.nextGoodToken();
-		if (!maybeLAngleBracket) { return { name: ident.text, args: [] }; }
+		if (!maybeLAngleBracket) { return { name: ident, args: [] }; }
 		if (maybeLAngleBracket.type !== TokenType.LAngleBracket) {
 			this.tokenizer.prepend(maybeLAngleBracket.text);
-			return { name: ident.text, args: [] };
+			return { name: ident, args: [] };
 		}
 		const args = this.parseTemplateArgList();
 		if (!args) { return undefined; }
 		const rAngleBracket = this.nextGoodToken();
 		if (!rAngleBracket || rAngleBracket.type !== TokenType.RAngleBracket) { return undefined; }
-		return { name: ident.text, args: args };
+		return { name: ident, args: args };
 	}
 
 	// parses:
@@ -290,13 +309,17 @@ export class Parser {
 		});
 		return args;
 	}
+
+	public parseMethodDecl() {
+
+	}
 }
 
 function extractClassName(text: string) {
 	const tokenizer = new Tokenizer(text);
 	const parser = new Parser(tokenizer);
 	let r;
-	if (r = parser.parse()) {
+	if (r = parser.parseClassDecl()) {
 		return r.className;
 	}
 	return undefined;
