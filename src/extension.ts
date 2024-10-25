@@ -421,7 +421,7 @@ export function defineMethod(classDeclContext: string, methodDeclContext: string
 		return undefined;
 	let index = 0;
 	let decl = "";
-	const removedSegments = ["override", "virtual", "explicit"];
+	const removedSegments = ["override", "virtual", "explicit", "static"];
 	for (let segment of methodDecl.segments) {
 		if (index === methodDecl.nameSegment) {
 			decl += classDecl.className;
@@ -452,7 +452,7 @@ type Context = { begin: number; end: number; text: string }
  * Find which class the cursor is currently in. Return the class declaration's prefix.
  * @param editor 
  * @returns 
- */ 
+ */
 function getClassDeclContext(editor: vscode.TextEditor) {
 	const cursorPos = editor.selection.active;
 	const document = editor.document;
@@ -474,9 +474,9 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 			text: match[0],
 		});
 	}
-	if (!contexts)
+	if (!contexts || contexts.length == 0)
 		return undefined;
-	let contextStack : { context: Context; layer: number} [] = [];
+	let contextStack: { context: Context; layer: number }[] = [];
 	let layer = 0;
 	for (let pos = contexts[0].begin; pos < textUpToCursor.length; pos++) {
 		const ch = textUpToCursor[pos];
@@ -484,7 +484,7 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 			layer++;
 			let c;
 			if (c = findContext(pos)) {
-				contextStack.push({context: c, layer: layer});
+				contextStack.push({ context: c, layer: layer });
 			}
 		}
 		else if (ch === "}") {
@@ -494,8 +494,7 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 			layer--;
 		}
 	}
-	if (contextStack)
-	{
+	if (contextStack) {
 		// todo: support nested class
 		return contextStack[contextStack.length - 1].context.text;
 	}
@@ -518,24 +517,31 @@ function getMethodDeclContext(editor: vscode.TextEditor) {
 
 
 export function activate(context: vscode.ExtensionContext) {
-	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyAsDefinition', async () => {
+	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyDefinition', async () => {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
-			vscode.window.showErrorMessage('No active editor found.');
+			vscode.window.showErrorMessage('C++ Def Paster: No active editor found.');
 			return;
 		}
 		const classDeclContext = getClassDeclContext(editor);
 		if (!classDeclContext) {
-			vscode.window.showErrorMessage('Cannot find class declaration context.');
+			vscode.window.showErrorMessage('C++ Def Paster: Cannot find class declaration context.');
 			return;
 		}
 		const methodDeclContext = getMethodDeclContext(editor);
 		if (!methodDeclContext) {
-			vscode.window.showErrorMessage('Cannot find method declaration context.');
+			vscode.window.showErrorMessage('C++ Def Paster: Cannot find method declaration context.');
 			return;
 		}
 		const def = defineMethod(classDeclContext, methodDeclContext);
-		vscode.window.showInformationMessage(`def = ${def}`);
+		if (def)
+		{
+			await vscode.env.clipboard.writeText(def);
+			vscode.window.showInformationMessage(`C++ Def Paster\nCopied ✔️ ${def}`);
+		}
+		else
+			vscode.window.showErrorMessage('C++ Def Paster: Failed to generate definition.');
+
 	});
 
 	context.subscriptions.push(disposable);
