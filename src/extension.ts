@@ -3,21 +3,82 @@ import * as vscode from 'vscode';
 
 export enum TokenType {
 	Unknown,
+	/**
+	 * A space, tab, etc
+	 */
 	Space,
+	/**
+	 * `class` or `struct`
+	 */
 	ClassKeyword,
+	/**
+	 * `public`, `private` or `protected`
+	 */
 	PublicKeyword,
+	/**
+	 * An alphanumeric word basically.
+	 */
 	Ident,
+	/**
+	 * `(`
+	 */
 	LParen,
+	/**
+	 * `)`
+	 */
 	RParen,
+	/**
+	 * `{`
+	 */
 	LBrace,
+	/**
+	 * `}`
+	 */
 	RBrace,
+	/**
+	 * `[`
+	 */
+	LBracket,
+	/**
+	 * `]`
+	 */
+	RBracket,
+	/**
+	 * `;`
+	 */
 	SemiColumn,
+	/**
+	 * `::`
+	 */
 	ColumnColumn,
+	/**
+	 * `:`
+	 */
 	Column,
+	/**
+	 * `<`
+	 */
 	LAngleBracket,
+	/**
+	 * `>`
+	 */
 	RAngleBracket,
+	/**
+	 * `,`
+	 */
 	Comma,
-	Tilde
+	/**
+	 * `~`
+	 */
+	Tilde,
+	/**
+	 * `*`
+	 */
+	Star,
+	/**
+	 * `&`
+	 */
+	Ampersand,
 }
 
 export class Token {
@@ -34,29 +95,33 @@ export class Token {
  */
 export class Tokenizer {
 	stack: string[];
+	text: string;
 
 	constructor(text: string) {
 		this.stack = [];
-		this.stack.push(text);
+		this.text = text;
 	}
 
 	/** 
-	 * Text to be tokenized.
+	 * Push the text to be parsed onto an internal stack.
 	 */
-	get text() {
-		return this.stack[this.stack.length - 1];
-	}
-
-	set text(value: string) {
-		this.stack[this.stack.length - 1] = value;
-	}
-
 	public save() {
 		this.stack.push(this.text);
 	}
 
-	public restore() {
-		this.stack.pop();
+	/** 
+	 * Pop the internal stack to restore the last saved text.
+	 * @param drop If true, simply drop the last saved text.
+	 */
+	public restore(drop?: boolean) {
+		drop = drop ?? false;
+		let stackText = this.stack.pop();
+		if (stackText !== undefined) {
+			if (!drop)
+				this.text = stackText;
+		} else {
+			throw new Error(`Tokenizer.restore: stack is empty!`);
+		}
 	}
 
 	/** 
@@ -90,6 +155,10 @@ export class Tokenizer {
 			return this.sliceToken(m[0].length, TokenType.LBrace);
 		} else if (m = this.text.match(/^}/g)) {
 			return this.sliceToken(m[0].length, TokenType.RBrace);
+		} else if (m = this.text.match(/^\[/g)) {
+			return this.sliceToken(m[0].length, TokenType.LBracket);
+		} else if (m = this.text.match(/^\]/g)) {
+			return this.sliceToken(m[0].length, TokenType.RBracket);
 		} else if (m = this.text.match(/^;/g)) {
 			return this.sliceToken(m[0].length, TokenType.SemiColumn);
 		} else if (m = this.text.match(/^::/g)) {
@@ -104,6 +173,10 @@ export class Tokenizer {
 			return this.sliceToken(m[0].length, TokenType.RAngleBracket);
 		} else if (m = this.text.match(/^~/g)) {
 			return this.sliceToken(m[0].length, TokenType.Tilde);
+		} else if (m = this.text.match(/^\*/g)) {
+			return this.sliceToken(m[0].length, TokenType.Star);
+		} else if (m = this.text.match(/^&/g)) {
+			return this.sliceToken(m[0].length, TokenType.Ampersand);
 		}
 		return this.sliceToken(1, TokenType.Unknown);
 	}
@@ -119,26 +192,35 @@ export class Tokenizer {
  * The name of a class.
  * e.g. 'MyClass', 'MyTemplatedClass<int>'
  */
-type ClassName = { name: string, args: ClassName[] };
+type ClassName = { name: string, args: ClassName[] | undefined };
 
 /**
  * Base class declaration, part of a class declaration.
  * e.g. 'public MyBase' as in 'class MyClass : public MyBase'.
  */
-type BaseDecl = { access: string, className: ClassName };
+type BaseDecl = { access: string | undefined, className: ClassName };
 
 /**
  * Class declaration. Goes up until a left curly brace.
  * e.g. 'class MyClass {'
  */
-type ClassDecl = { className: string, attribute: string, bases: BaseDecl[] };
+type ClassDecl = { className: string, attribute: string | undefined, bases: BaseDecl[] | undefined };
+
+export enum SegmentType {
+	AttributeLike,
+	Symbol,
+	MacroLike,
+	FunctionLikeWithParen,
+	FunctionLikeWithAngleBrackets,
+	FunctionLikeWithBrackets,
+}
 
 /**
- * A segment is a 'word' in a method decl. e.g.
- * `__attribute__((visibility("default")))`, `std::xxx<int>`, `__stdcall`, `f()`, `const`, `MY_EXPORT`,
+ * A segment is a 'word' in a method declaration. e.g.
+ * `__attribute__((visibility("default")))`, `std::vector<int>`, `__stdcall`, `f()`, `const`, `MY_EXPORT`,
  * are all segments.
  */
-type Segment = { name: string, parenType: string | undefined, content: string | undefined }
+type Segment = { text: string, type: SegmentType }
 
 /**
  * A segment-based method declaration.
@@ -166,16 +248,22 @@ export class Parser {
 	// parses:
 	//     class MyClass
 	//     class EXPORT_STUFF MyClass
-	private parseNameAndAttrInClassDecl() {
+	private parseNameAndAttrInClassDecl(): { name: string; attribute: string | undefined } | undefined {
 		const classKw = this.nextGoodToken();
 		if (!classKw || classKw.type !== TokenType.ClassKeyword) { return undefined; }
 		const token1 = this.nextGoodToken();
 		if (!token1 || token1.type !== TokenType.Ident) { return undefined; }
 		const token2 = this.nextGoodToken();
-		if (!token2) { return { name: token1.text, attribute: "" }; }
+		if (!token2) {
+			return {
+				name: token1.text, attribute: undefined
+			};
+		}
 		if (token2.type !== TokenType.Ident) {
 			this.tokenizer.prepend(token2.text);
-			return { name: token1.text, attribute: "" };
+			return {
+				name: token1.text, attribute: undefined
+			};
 		}
 		return { name: token2.text, attribute: token1.text };
 	}
@@ -210,7 +298,7 @@ export class Parser {
 			return {
 				className: nameAndAttr.name,
 				attribute: nameAndAttr.attribute,
-				bases: [],
+				bases: undefined,
 			};
 		}
 		else { return undefined; }
@@ -266,7 +354,7 @@ export class Parser {
 				let r;
 				if (r = this.parseClassName()) {
 					return {
-						access: "default",
+						access: undefined,
 						className: r
 					};
 				}
@@ -285,10 +373,14 @@ export class Parser {
 		let name = "";
 		let token;
 		let lastTokenType = undefined;
-		const allowedTokens = [TokenType.Ident, TokenType.ColumnColumn, TokenType.Tilde]
+		const nonrepeatableTokens = [TokenType.Ident, TokenType.ColumnColumn, TokenType.Tilde];
+		const repeatableTokens: TokenType[] = [];
 		while (token = this.nextGoodToken()) {
-			if (!allowedTokens.includes(token.type) ||
-				token.type === lastTokenType) {
+			const isRepeatableToken = repeatableTokens.includes(token.type);
+			const isNonRepeatableToken = nonrepeatableTokens.includes(token.type);
+			const isAllowedToken = isRepeatableToken || isNonRepeatableToken;
+			if (!isAllowedToken ||
+				isNonRepeatableToken && token.type === lastTokenType) {
 				this.tokenizer.prepend(token.text);
 				break;
 			}
@@ -312,7 +404,7 @@ export class Parser {
 		if (!maybeLAngleBracket) { return { name: ident, args: [] }; }
 		if (maybeLAngleBracket.type !== TokenType.LAngleBracket) {
 			this.tokenizer.prepend(maybeLAngleBracket.text);
-			return { name: ident, args: [] };
+			return { name: ident, args: undefined };
 		}
 		const args = this.parseTemplateArgList();
 		if (!args) { return undefined; }
@@ -330,6 +422,9 @@ export class Parser {
 		return args;
 	}
 
+	/**
+	 * Parses a method declaration. To simplify things, we see methods as an array of `Segment`s. The last segment with a pair of parentheses is considered to be the method's name.
+	 */
 	public parseMethodDecl(): MethodDecl | undefined {
 		let seg;
 		let segments: Segment[] = [];
@@ -339,9 +434,10 @@ export class Parser {
 			if (!semi)
 				return undefined;
 			if (semi.type === TokenType.SemiColumn) {
+				// find the method name
 				for (let i = segments.length - 1; i >= 0; i--) {
 					const currentSegment = segments[i];
-					if (currentSegment.parenType === "()") {
+					if (currentSegment.type === SegmentType.FunctionLikeWithParen) {
 						return { nameSegment: i, segments: segments };
 					}
 				}
@@ -352,45 +448,118 @@ export class Parser {
 		}
 		return undefined;
 	}
-
 	private parseSegment(): Segment | undefined {
+		/**
+		 * Currently a segment has many variations (see `SegmentType` ). This parser will try ONE variation. If that fails, it will restore the tokenizer state so we can try the next variation from a clean slate. Otherwise, keep it that way.
+		 * @param subParse A parsing function that parses one variation of a segment.
+		 * @returns A `Segment` if successful, an `undefined` if not.
+		 */
+		const tryParseSegment = (subParse: () => Segment | undefined) => {
+			this.tokenizer.save();
+			const seg = subParse();
+			// If failed, dont drop the saved stuff. 
+			const dontDrop = (seg === undefined);
+			this.tokenizer.restore(!dontDrop);
+			return seg;
+		};
+		let segment;
+		if (segment = tryParseSegment(() => { return this.parseNamedSegment(); })) {
+			return segment;
+		}
+		if (segment = tryParseSegment(() => { return this.parseAttributeLikeSegment(); })) {
+			return segment;
+		}
+		if (segment = tryParseSegment(() => { return this.parseSymbolSegment(); })) {
+			return segment;
+		}
+		return undefined;
+	}
+
+	/**
+	 * Parses a 'symbol segment'. aka a segment that is just a symbol or operator etc.
+	 * e.g. `&`, `*`
+	 */
+	private parseSymbolSegment(): Segment | undefined {
+		const token = this.nextGoodToken();
+		if (!token)
+			return undefined;
+		switch (token.type) {
+			case TokenType.Ampersand:
+			case TokenType.Star:
+				return { text: token.text, type: SegmentType.Symbol };
+		}
+		return undefined;
+	}
+
+	/**
+	 * Parses a 'bracket segment'. aka a segment that starts with a bracket.
+	 * e.g. '[[attribute]]'
+	 */
+	private parseAttributeLikeSegment(): Segment | undefined {
+		const token = this.nextGoodToken();
+		if (!token)
+			return undefined;
+		if (token.type === TokenType.LBracket) {
+			this.tokenizer.prepend(token.text);
+			const content = this.parseBracketContent(TokenType.LBracket, TokenType.RBracket);
+			if (!content)
+				return undefined;
+			return { text: content, type: SegmentType.AttributeLike };
+		}
+		return undefined;
+	}
+
+	/**
+	 * Parses a 'named segment', aka a segment that starts with a name, optionally followed by 
+	 * parentheses. 
+	 * e.g. `FOO`, `BAR(arg1, arg2)`, `std::vector<int>`
+	 */
+	private parseNamedSegment(): Segment | undefined {
 		const qualName = this.parseQualifiedName();
 		if (!qualName)
 			return undefined;
 		const token = this.nextGoodToken();
 		if (!token)
-			return { name: qualName, parenType: undefined, content: undefined };
+			return { text: qualName, type: SegmentType.MacroLike };
 
+		// if token is a type of parenthesis, rightParen will be defined
 		let rightParen = undefined;
-		let parenType = undefined;
+		let segmentType = undefined;
 		if (token.type === TokenType.LParen) {
 			rightParen = TokenType.RParen;
-			parenType = "()";
+			segmentType = SegmentType.FunctionLikeWithParen;
 		} else if (token.type === TokenType.LAngleBracket) {
 			rightParen = TokenType.RAngleBracket;
-			parenType = "<>";
+			segmentType = SegmentType.FunctionLikeWithAngleBrackets;
+		} else if (token.type === TokenType.LBracket) {
+			rightParen = TokenType.RBracket;
+			segmentType = SegmentType.FunctionLikeWithBrackets;
 		}
 
 		// with args. e.g. FOO(BAR<int>, BAZ)
 		if (rightParen) {
 			this.tokenizer.prepend(token.text);
-			const r = this.parseSegmentArgs(token.type, rightParen);
-			if (r === undefined)
+			const content = this.parseBracketContent(token.type, rightParen);
+			if (content === undefined)
 				return undefined;
-			return { name: qualName, parenType: parenType, content: r };
+			return { text: qualName + content, type: segmentType! };
 		}
 		// no args. e.g. FOO
 		this.tokenizer.prepend(token.text);
-		return { name: qualName, parenType: parenType, content: undefined };
+		return { text: qualName, type: SegmentType.MacroLike };
 	}
 
-	private parseSegmentArgs(leftParen: TokenType, rightParen: TokenType): string | undefined {
+	/**
+	 *  Parses whatever is inside the brackets.
+	 *  @returns The brackets and everything inside the brackets.
+	 */
+	private parseBracketContent(leftParen: TokenType, rightParen: TokenType): string | undefined {
 		const begin = this.nextGoodToken();
 		if (!begin || begin.type !== leftParen)
 			return undefined;
 		let token;
 		let owed = 1;
-		let content = "";
+		let content = begin.text;
 		while (token = this.tokenizer.next()) {
 			if (token.type === leftParen) {
 				content += token.text;
@@ -398,8 +567,10 @@ export class Parser {
 			}
 			else if (token.type === rightParen) {
 				owed--;
-				if (owed === 0)
+				content += token.text;
+				if (owed === 0) {
 					return content;
+				}
 			} else {
 				content += token.text;
 			}
@@ -427,15 +598,7 @@ export function defineMethod(classDeclContext: string, methodDeclContext: string
 			decl += classDecl.className;
 			decl += "::";
 		}
-		let newText = "";
-		newText += segment.name;
-		if (segment.parenType)
-			newText += segment.parenType[0];
-		if (segment.content)
-			newText += segment.content;
-		if (segment.parenType)
-			newText += segment.parenType[1];
-
+		let newText = segment.text;
 		if (!removedSegments.includes(newText)) {
 			decl += newText;
 			decl += " ";
@@ -534,8 +697,7 @@ export function activate(context: vscode.ExtensionContext) {
 			return;
 		}
 		const def = defineMethod(classDeclContext, methodDeclContext);
-		if (def)
-		{
+		if (def) {
 			await vscode.env.clipboard.writeText(def);
 			vscode.window.showInformationMessage(`C++ Def Paster\nCopied ✔️ ${def}`);
 		}
