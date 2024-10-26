@@ -142,9 +142,9 @@ export class Tokenizer {
 			return undefined;
 		} else if (m = this.text.match(/^\s+/g)) {
 			return this.sliceToken(m[0].length, TokenType.Space);
-		} else if (m = this.text.match(/^(class|struct|interface)/g)) {
+		} else if (m = this.text.match(/^\b(class|struct|interface)\b/g)) {
 			return this.sliceToken(m[0].length, TokenType.ClassKeyword);
-		} else if (m = this.text.match(/^(public|private|protected)/g)) {
+		} else if (m = this.text.match(/^\b(public|private|protected)\b/g)) {
 			return this.sliceToken(m[0].length, TokenType.PublicKeyword);
 		} else if (m = this.text.match(/^\w+/g)) {
 			return this.sliceToken(m[0].length, TokenType.Ident);
@@ -663,7 +663,7 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 	const cursorPos = editor.selection.active;
 	const document = editor.document;
 	const textUpToCursor = document.getText(new vscode.Range(new vscode.Position(0, 0), cursorPos));
-	const regex = /(struct|class|interface)[^;]+?{/g;
+	const regex = /\b(struct|class|interface)\b[^;]+?{/g;
 	const contexts: Context[] = [];
 	const findContext = (pos: number) => {
 		for (const context of contexts) {
@@ -694,7 +694,7 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 			}
 		}
 		else if (ch === "}") {
-			if (contextStack && contextStack[contextStack.length - 1].layer === layer) {
+			if (contextStack.length && contextStack[contextStack.length - 1].layer === layer) {
 				contextStack.pop();
 			}
 			layer--;
