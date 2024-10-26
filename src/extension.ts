@@ -637,7 +637,7 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 			text: match[0],
 		});
 	}
-	if (!contexts || contexts.length == 0)
+	if (!contexts || contexts.length === 0)
 		return undefined;
 	let contextStack: { context: Context; layer: number }[] = [];
 	let layer = 0;
@@ -665,6 +665,10 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 }
 
 function getMethodDeclContext(editor: vscode.TextEditor) {
+	return getSelectionOrLine(editor);
+}
+
+function getSelectionOrLine(editor: vscode.TextEditor) {
 	const selection = editor.selection; // Get the current selection
 	let text;
 	if (selection.isEmpty) {
@@ -678,36 +682,48 @@ function getMethodDeclContext(editor: vscode.TextEditor) {
 	return text;
 }
 
-
 export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyDefinition', async () => {
+		let ok = false;
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
-			vscode.window.showErrorMessage('C++ Def Paster: No active editor found.');
+			console.error('no editor');
+			vscode.window.showErrorMessage("Failed to copy definition.");
 			return;
 		}
-		const classDeclContext = getClassDeclContext(editor);
-		if (!classDeclContext) {
-			vscode.window.showErrorMessage('C++ Def Paster: Cannot find class declaration context.');
-			return;
-		}
-		const methodDeclContext = getMethodDeclContext(editor);
-		if (!methodDeclContext) {
-			vscode.window.showErrorMessage('C++ Def Paster: Cannot find method declaration context.');
-			return;
-		}
-		const def = defineMethod(classDeclContext, methodDeclContext);
-		if (def) {
+		do {
+			const classDeclContext = getClassDeclContext(editor);
+			if (!classDeclContext) {
+				console.error('getClassDeclContext failed');
+				break;
+			}
+			const methodDeclContext = getMethodDeclContext(editor);
+			if (!methodDeclContext) {
+				console.error('getMethodDeclContext failed');
+				break;
+			}
+			const def = defineMethod(classDeclContext, methodDeclContext);
+			if (!def) {
+				console.error('defineMethod failed');
+				break;
+			}
+			ok = true;
 			await vscode.env.clipboard.writeText(def);
-			vscode.window.showInformationMessage(`C++ Def Paster\nCopied ✔️ ${def}`);
+			vscode.window.showInformationMessage(`✔️ Copied: ${def}`);
+		} while (false);
+		if (!ok) {
+			const sel = getSelectionOrLine(editor);
+			if (sel) {
+				await vscode.env.clipboard.writeText(sel);
+				vscode.window.showErrorMessage('Failed to copy definition. Copied current selection instead.');
+			} else {
+				vscode.window.showErrorMessage('Failed to copy definition.');
+			}
 		}
-		else
-			vscode.window.showErrorMessage('C++ Def Paster: Failed to generate definition.');
-
 	});
 
 	context.subscriptions.push(disposable);
-	console.log('cpp-def-paster activated');
+	console.log('activated');
 }
 
 export function deactivate() { }
