@@ -2,13 +2,18 @@
   "name": "cpp-def-paster",
   "displayName": "C++ Definition Paster",
   "description": "Quickly copy your C++ declarations and have their definitions ready to paste!",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": "^1.94.0"
   },
   "categories": [
     "Other"
   ],
+  "icon": "img/thumbnail.png",
+  "galleryBanner": {
+    "color": "#444444",
+    "theme": "dark"
+  },
   "publisher": "binary-song",
   "activationEvents": [],
   "main": "./out/extension.js",

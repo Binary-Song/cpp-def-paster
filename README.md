@@ -1,12 +1,12 @@
-# cpp-def-paster README
+# C++ Definition Paster README
 
 A simple tool to help you generate c++ definitions.
 
 ## Usage
 
-1. Put your text cursor inside a **c++ member function declaration**.
+1. Place your text cursor inside a c++ **member function declaration**.
 
-1. Press `ctrl+alt+c` to copy **definition** for that member function. 
+1. Press `ctrl+alt+c` to copy **the definition** for that member function. 
 
 1. You can now press `ctrl+v` to paste it whereever you like.
 
