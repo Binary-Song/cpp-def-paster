@@ -1,5 +1,6 @@
 /* eslint-disable curly */
 import * as vscode from 'vscode';
+import * as alg from './tools/algorithm'
 
 export enum TokenType {
 	Unknown,
@@ -141,7 +142,7 @@ export class Tokenizer {
 			return undefined;
 		} else if (m = this.text.match(/^\s+/g)) {
 			return this.sliceToken(m[0].length, TokenType.Space);
-		} else if (m = this.text.match(/^(class|struct)/g)) {
+		} else if (m = this.text.match(/^(class|struct|interface)/g)) {
 			return this.sliceToken(m[0].length, TokenType.ClassKeyword);
 		} else if (m = this.text.match(/^(public|private|protected)/g)) {
 			return this.sliceToken(m[0].length, TokenType.PublicKeyword);
@@ -248,35 +249,75 @@ export class Parser {
 	// parses:
 	//     class MyClass
 	//     class EXPORT_STUFF MyClass
-	private parseNameAndAttrInClassDecl(): { name: string; attribute: string | undefined } | undefined {
+	//     class EXPORT_STUFF MyClass MY_FINAL
+	private parseNameAndAttrInClassDecl(): { name: string; attribute: string | undefined; postAttribute: string | undefined } | undefined {
 		const classKw = this.nextGoodToken();
 		if (!classKw || classKw.type !== TokenType.ClassKeyword) { return undefined; }
-		const token1 = this.nextGoodToken();
-		if (!token1 || token1.type !== TokenType.Ident) { return undefined; }
-		const token2 = this.nextGoodToken();
-		if (!token2) {
-			return {
-				name: token1.text, attribute: undefined
-			};
+
+		let count = 0;
+		/** if the input is `class EXPORT MyClass FINAL {`
+		 * find segments between `class` and `{` */
+		let segments: Segment[] = [];
+		while (true) {
+			const token = this.nextGoodToken();
+			if (!token)
+				return undefined;
+			this.tokenizer.prepend(token.text);
+			if (token.type === TokenType.Column ||
+				token.type === TokenType.LBrace
+			) {
+				break;
+			}
+			const seg = this.parseSegment();
+			if (!seg) {
+				return undefined;
+			}
+			segments.push(seg);
+			if (count++ > 50)
+				return undefined;
 		}
-		if (token2.type !== TokenType.Ident) {
-			this.tokenizer.prepend(token2.text);
-			return {
-				name: token1.text, attribute: undefined
-			};
+
+		if (segments.length === 0) {
+			return undefined;
 		}
-		return { name: token2.text, attribute: token1.text };
+
+		// find last 'macro like' segment as it is the most likely to be the class's name
+		const keySegmentIndex = alg.findLastIndex(segments,
+			 (seg: Segment) => seg.text !== "final" && seg.type === SegmentType.MacroLike);
+		if (keySegmentIndex === undefined)
+			return undefined;
+		let attr: string | undefined = "";
+		let postAttr: string | undefined = "";
+		let className = segments[keySegmentIndex].text;
+		for (let i = 0; i < segments.length; i++) {
+			if (i < keySegmentIndex)
+				attr += segments[i].text + " ";
+			else if (i > keySegmentIndex)
+				postAttr += segments[i].text + " ";
+		}
+		attr = attr.trim();
+		postAttr = postAttr.trim();
+		if (attr === "")
+			attr = undefined;
+		if (postAttr === "")
+			postAttr = undefined;
+		return { name: className, attribute: attr, postAttribute: postAttr };
 	}
 
 	// parses:
 	//     class MyClass {
 	//     class EXPORT_STUFF MyClass {
+	//     class EXPORT_STUFF MyClass final {
 	//     class MyClass : <base-list> {
 	public parseClassDecl(): ClassDecl | undefined {
 		const nameAndAttr = this.parseNameAndAttrInClassDecl();
-		if (!nameAndAttr) { return undefined; }
-		const token = this.nextGoodToken();
-		if (!token) { return undefined; }
+		if (!nameAndAttr) {
+			return undefined;
+		}
+		let token = this.nextGoodToken();
+		if (!token) {
+			return undefined;
+		}
 		// class A : ... {
 		//         \__ token
 		if (token.type === TokenType.Column) {
@@ -301,7 +342,9 @@ export class Parser {
 				bases: undefined,
 			};
 		}
-		else { return undefined; }
+		else {
+			return undefined;
+		}
 	}
 
 	private parseCommaSeparatedList<Item>(parseItem: () => Item | undefined): Item[] | undefined {
@@ -592,7 +635,7 @@ export function defineMethod(classDeclContext: string, methodDeclContext: string
 		return undefined;
 	let index = 0;
 	let decl = "";
-	const removedSegments = ["override", "virtual", "explicit", "static"];
+	const removedSegments = ["override", "virtual", "explicit", "static", "final"];
 	for (let segment of methodDecl.segments) {
 		if (index === methodDecl.nameSegment) {
 			decl += classDecl.className;
@@ -620,7 +663,7 @@ function getClassDeclContext(editor: vscode.TextEditor) {
 	const cursorPos = editor.selection.active;
 	const document = editor.document;
 	const textUpToCursor = document.getText(new vscode.Range(new vscode.Position(0, 0), cursorPos));
-	const regex = /(struct|class)[^;]+?{/g;
+	const regex = /(struct|class|interface)[^;]+?{/g;
 	const contexts: Context[] = [];
 	const findContext = (pos: number) => {
 		for (const context of contexts) {

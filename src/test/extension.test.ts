@@ -195,6 +195,16 @@ suite('cpp-def-paster', () => {
 			]
 		});
 	});
+	test('parseClassDecl 8', () => {
+		const tokenizer = new x.Tokenizer("interface __declspec(('bs')) BS Foo final{");
+		const parser = new x.Parser(tokenizer);
+		const result = parser.parseClassDecl();
+		assert.deepStrictEqual(result,{
+			className: 'Foo',
+			attribute: "__declspec(('bs')) BS",
+			bases: undefined
+		  });
+	});
 	test('parseMethodDecl 1', () => {
 		const tokenizer = new x.Tokenizer("__declspec('blablabla') void __stdcall f() const volatile noexcept wtf ;");
 		const parser = new x.Parser(tokenizer);
@@ -245,6 +255,12 @@ suite('cpp-def-paster', () => {
 	test('definition 2', () => {
 		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>,a<b>,c>,d,e{";
 		let methodCtx = "virtual static __declspec('') void __stdcall f() const volatile noexcept override;";
+		const defn = x.defineMethod(classCtx, methodCtx);
+		assert.strictEqual(defn, "__declspec('') void __stdcall Happy::f() const volatile noexcept ");
+	});
+	test('definition 3', () => {
+		let classCtx = "class Happy final:d,e{";
+		let methodCtx = "virtual static __declspec('') void __stdcall f() const volatile noexcept override final;";
 		const defn = x.defineMethod(classCtx, methodCtx);
 		assert.strictEqual(defn, "__declspec('') void __stdcall Happy::f() const volatile noexcept ");
 	});
