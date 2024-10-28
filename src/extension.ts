@@ -208,23 +208,49 @@ type BaseDecl = { access: string | undefined, className: ClassName };
 type ClassDecl = { className: string, attribute: string | undefined, bases: BaseDecl[] | undefined };
 
 export enum SegmentType {
+	/**
+	 * A segment that looks like a standard C++ attribute.
+	 * @example `[[no_discard]]`
+	 */
 	AttributeLike,
+	/**
+	 * A symbol, operator, etc.
+	 * @example `*`
+	 * @example `&`
+	 */
 	Symbol,
+	/**
+	 * An identifier.
+	 * @example `Q_DECL_EXPORT`
+	 * @example `std::uint8_t`
+	 * @example `const`
+	 */
 	MacroLike,
+	/**
+	 * An identifier followed by `()` containing args.
+	 * @example `__attribute__((visibility("default")))`
+	 * @example `foo()`
+	 */
 	FunctionLikeWithParen,
+	/**
+	 * An identifier followed by `<>` containing args.
+	 * @example `std::vector<int>`
+	 */
 	FunctionLikeWithAngleBrackets,
+	/**
+	 * An identifier followed by `[]` containing args.
+	 * @example `int[8]`
+	 */
 	FunctionLikeWithBrackets,
 }
 
 /**
- * A segment is a 'word' in a method declaration. e.g.
- * `__attribute__((visibility("default")))`, `std::vector<int>`, `__stdcall`, `f()`, `const`, `MY_EXPORT`,
- * are all segments.
+ * A segment is a 'word' in a method declaration. See {@link SegmentType}.
  */
 type Segment = { text: string, type: SegmentType }
 
 /**
- * A segment-based method declaration.
+ * A method declaration.
  */
 type MethodDecl = { nameSegment: number, segments: Segment[] }
 
@@ -246,10 +272,12 @@ export class Parser {
 		}
 		return undefined;
 	}
-	// parses:
-	//     class MyClass
-	//     class EXPORT_STUFF MyClass
-	//     class EXPORT_STUFF MyClass MY_FINAL
+	/**
+	 * Parses the `class` keyword, any attributes following the `class` keyword, the class name and the `final` specifier. 
+	 * @example `class MyClass`
+	 * @example `class __declspec(dllexport) MyClass`
+	 * @example `class EXPORT_STUFF MyClass final`
+	 */
 	private parseNameAndAttrInClassDecl(): { name: string; attribute: string | undefined; postAttribute: string | undefined } | undefined {
 		const classKw = this.nextGoodToken();
 		if (!classKw || classKw.type !== TokenType.ClassKeyword) { return undefined; }
@@ -304,11 +332,11 @@ export class Parser {
 		return { name: className, attribute: attr, postAttribute: postAttr };
 	}
 
-	// parses:
-	//     class MyClass {
-	//     class EXPORT_STUFF MyClass {
-	//     class EXPORT_STUFF MyClass final {
-	//     class MyClass : <base-list> {
+	/**
+	 * Parses class declaration until left curly brace.
+	 * @example `class EXPORT_STUFF MyClass final {`
+	 * @example `class MyClass : public Base1, public Base2 {`
+	 */
 	public parseClassDecl(): ClassDecl | undefined {
 		const nameAndAttr = this.parseNameAndAttrInClassDecl();
 		if (!nameAndAttr) {
@@ -347,6 +375,9 @@ export class Parser {
 		}
 	}
 
+	/**
+	 * Parses a comma separated list of anything.
+	 */
 	private parseCommaSeparatedList<Item>(parseItem: () => Item | undefined): Item[] | undefined {
 		let items: Item[] = [];
 		let count = 0;
@@ -364,9 +395,11 @@ export class Parser {
 		}
 		return undefined;
 	}
-
-	// parses:
-	//     public Base1, public Base2, ... , public BaseN
+  
+	/**
+	 * Parses a comma separated list of base specifiers.
+	 * @example `public Base1, public Base2, ... , public BaseN`
+	 */
 	private parseBaseList(): BaseDecl[] | undefined {
 		const items = this.parseCommaSeparatedList(() => {
 			return this.parseBase();
@@ -374,10 +407,11 @@ export class Parser {
 		return items;
 	}
 
-	// parses:
-	//     public Base
-	//     Base
-	//     public TemplatedBase<int>
+	/**
+	 * Parses a base specifier.
+	 * @example `Base`
+	 * @example `private std::vector<int>`
+	 */
 	private parseBase(): BaseDecl | undefined {
 		const publicKwOrIdent = this.nextGoodToken();
 		if (!publicKwOrIdent) { return undefined; }
@@ -410,7 +444,10 @@ export class Parser {
 	}
 
 	/**
-	 * Parses 'A', 'ns::B', 'ns1::ns2::C', '~D'
+	 * Parses a qualified name.
+	 * @example `A`
+	 * @example `ns::B`
+	 * @example `ns::~C`
 	 */
 	private parseQualifiedName() {
 		let name = "";
@@ -436,10 +473,10 @@ export class Parser {
 		return name;
 	}
 
-	// parses:
-	//     MyClass
-	//     MyClassTemplate<int>
-	//     MyClassTemplate<int, double, ... , float, WTF<int> >
+	/**
+	 * Parses a qualified name optionally followed by template args.
+	 * @example `ns::MyClassTemplate<>`
+	 */
 	private parseClassName(): ClassName | undefined {
 		const ident = this.parseQualifiedName();
 		if (!ident) { return undefined; }
@@ -456,8 +493,10 @@ export class Parser {
 		return { name: ident, args: args };
 	}
 
-	// parses:
-	//     int, double, ... , float, WTF<int>
+	/**
+	 * Parses template args.
+	 * @example `int, double, WTF<int>`
+	 */
 	private parseTemplateArgList(): ClassName[] | undefined {
 		const args = this.parseCommaSeparatedList(() => {
 			return this.parseClassName();
@@ -491,6 +530,10 @@ export class Parser {
 		}
 		return undefined;
 	}
+
+	/**
+	 * Parses a segment. See {@link Segment}.
+	 */
 	private parseSegment(): Segment | undefined {
 		/**
 		 * Currently a segment has many variations (see `SegmentType` ). This parser will try ONE variation. If that fails, it will restore the tokenizer state so we can try the next variation from a clean slate. Otherwise, keep it that way.
@@ -519,8 +562,7 @@ export class Parser {
 	}
 
 	/**
-	 * Parses a 'symbol segment'. aka a segment that is just a symbol or operator etc.
-	 * e.g. `&`, `*`
+	 * See {@link SegmentType.Symbol}
 	 */
 	private parseSymbolSegment(): Segment | undefined {
 		const token = this.nextGoodToken();
@@ -535,8 +577,7 @@ export class Parser {
 	}
 
 	/**
-	 * Parses a 'bracket segment'. aka a segment that starts with a bracket.
-	 * e.g. '[[attribute]]'
+	 * See {@link SegmentType.AttributeLike}
 	 */
 	private parseAttributeLikeSegment(): Segment | undefined {
 		const token = this.nextGoodToken();
@@ -553,9 +594,7 @@ export class Parser {
 	}
 
 	/**
-	 * Parses a 'named segment', aka a segment that starts with a name, optionally followed by 
-	 * parentheses. 
-	 * e.g. `FOO`, `BAR(arg1, arg2)`, `std::vector<int>`
+	 * Parses a macro-like or function-like segment. See {@link SegmentType}.
 	 */
 	private parseNamedSegment(): Segment | undefined {
 		const qualName = this.parseQualifiedName();
@@ -622,6 +661,11 @@ export class Parser {
 	}
 }
 
+/**
+ *  Generates definition given contexts.
+ * @param classDeclContext Text from `class` keyword to left curly brace.
+ * @param methodDeclContext Text containing the method declaration.
+ */
 export function defineMethod(classDeclContext: string, methodDeclContext: string) {
 	let tokenizer = new Tokenizer(classDeclContext);
 	let parser = new Parser(tokenizer);
@@ -654,11 +698,6 @@ export function defineMethod(classDeclContext: string, methodDeclContext: string
 
 type Context = { begin: number; end: number; text: string }
 
-/**
- * Find which class the cursor is currently in. Return the class declaration's prefix.
- * @param editor 
- * @returns 
- */
 function getClassDeclContext(editor: vscode.TextEditor) {
 	const cursorPos = editor.selection.active;
 	const document = editor.document;
