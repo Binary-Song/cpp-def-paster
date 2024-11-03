@@ -8,14 +8,7 @@ A simple tool to help you generate c++ definitions.
 
 1. Select or place the cursor inside a function prototype.
 
-1. Press `ctrl+c`.
-
-1. If the extension recognizes the syntax, the function body will copied. 
-
-1. Otherwise, the `ctrl+c` will just work normally.
-
-1. You can now press `ctrl+v` to paste it whereever you like.
-
+// todo update this
 ## Tips
 
 - You can use `ctrl+insert` to enforce a normal copy.

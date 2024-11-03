@@ -786,15 +786,38 @@ async function execCopyDef() {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyDefinition', async () => {
+	context.subscriptions.push(vscode.commands.registerCommand('cpp-def-paster.copyDefinition', async () => {
 		try {
 			await execCopyDef();
 		} catch (error) {
 			vscode.window.showInformationMessage(`Failed to copy def. Falling back to normal copy.`);
 			vscode.commands.executeCommand("editor.action.clipboardCopyAction");
 		}
-	});
-	context.subscriptions.push(disposable);
+	}));
+	context.subscriptions.push(vscode.commands.registerCommand('cpp-def-paster.magicCopy', async () => {
+		const config = vscode.workspace.getConfiguration();
+		const editor = vscode.window.activeTextEditor;
+		if (!editor)
+			return;
+		const selection = editor.selection;
+		const startPos = selection.start;
+		const endPos = selection.end;
+		const cursorPos = editor.selection.active;
+		const isMultiSelect = editor.selections.length !== 1;
+		const isZeroLengthSelect = startPos.compareTo(endPos) === 0;
+		const isRightToLeftSelect = startPos.compareTo(cursorPos) === 0;
+		if (!isMultiSelect && !isZeroLengthSelect && isRightToLeftSelect) {
+			try {
+				await execCopyDef();
+			} catch (error) {
+				vscode.window.showInformationMessage(`Failed to copy def. Falling back to normal copy.`);
+				vscode.commands.executeCommand("editor.action.clipboardCopyAction");
+			}
+		} else {
+			vscode.commands.executeCommand("editor.action.clipboardCopyAction");
+		}
+
+	}));
 	console.log('activated');
 }
 
