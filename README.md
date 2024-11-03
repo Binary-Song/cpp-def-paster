@@ -4,11 +4,13 @@ A simple tool to help you generate c++ definitions.
 
 ## Quick Start
 
+![demo](img/demo.gif)
+
 1. Select or place the cursor inside a function prototype.
 
 1. Press `ctrl+c`.
 
-1. If the extension recognizes the syntax (and the editor language is C/C++), the function body will copied. 
+1. If the extension recognizes the syntax, the function body will copied. 
 
 1. Otherwise, the `ctrl+c` will just work normally.
 
