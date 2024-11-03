@@ -2,20 +2,22 @@
 
 A simple tool to help you generate c++ definitions.
 
-## Usage
+## Quick Start
 
-1. Place your text cursor inside a c++ **member function declaration**.
+1. Select or place the cursor inside a function prototype.
 
-1. Press `ctrl+alt+c` to copy **the definition** for that member function. 
+1. Press `ctrl+c`.
+
+1. If the extension recognizes the syntax (and the editor language is C/C++), the function body will copied. 
+
+1. Otherwise, the `ctrl+c` will just work normally.
 
 1. You can now press `ctrl+v` to paste it whereever you like.
 
-You can also use the 'Copy definition' command accessible from the Command Palette. 
+## Tips
 
-If you want to change the key bindings, go to File - Preferences - Keyboard Shortcuts and search for `cpp-def-paster.copyDefinition`.
+- You can use `ctrl+insert` to enforce a normal copy.
+
+- If you want to change the key binding, go to File - Preferences - Keyboard Shortcuts and search for `cpp-def-paster.copyDefinition`.
 
 This extension is still in early development; any feedback would be greatly appreciated!
-
-## Known Issues
-
-- For nested classes or classes within a namespace, only the innermost class name will be included in the copied definition.

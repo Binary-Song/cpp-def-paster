@@ -311,7 +311,7 @@ export class Parser {
 
 		// find last 'macro like' segment as it is the most likely to be the class's name
 		const keySegmentIndex = alg.findLastIndex(segments,
-			 (seg: Segment) => seg.text !== "final" && seg.type === SegmentType.MacroLike);
+			(seg: Segment) => seg.text !== "final" && seg.type === SegmentType.MacroLike);
 		if (keySegmentIndex === undefined)
 			return undefined;
 		let attr: string | undefined = "";
@@ -395,7 +395,7 @@ export class Parser {
 		}
 		return undefined;
 	}
-  
+
 	/**
 	 * Parses a comma separated list of base specifiers.
 	 * @example `public Base1, public Base2, ... , public BaseN`
@@ -764,46 +764,36 @@ function getSelectionOrLine(editor: vscode.TextEditor) {
 	return text;
 }
 
+async function execCopyDef() {
+	const editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		throw new Error("no editor");
+	}
+	const classDeclContext = getClassDeclContext(editor);
+	if (!classDeclContext) {
+		throw new Error("getClassDeclContext failed");
+	}
+	const methodDeclContext = getMethodDeclContext(editor);
+	if (!methodDeclContext) {
+		throw new Error("getMethodDeclContext failed");
+	}
+	const def = defineMethod(classDeclContext, methodDeclContext);
+	if (!def) {
+		throw new Error("defineMethod failed");
+	}
+	await vscode.env.clipboard.writeText(def);
+	vscode.window.showInformationMessage(`✔️ Copied: ${def}`);
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('cpp-def-paster.copyDefinition', async () => {
-		let ok = false;
-		const editor = vscode.window.activeTextEditor;
-		if (!editor) {
-			console.error('no editor');
-			vscode.window.showErrorMessage("Failed to copy definition.");
-			return;
-		}
-		do {
-			const classDeclContext = getClassDeclContext(editor);
-			if (!classDeclContext) {
-				console.error('getClassDeclContext failed');
-				break;
-			}
-			const methodDeclContext = getMethodDeclContext(editor);
-			if (!methodDeclContext) {
-				console.error('getMethodDeclContext failed');
-				break;
-			}
-			const def = defineMethod(classDeclContext, methodDeclContext);
-			if (!def) {
-				console.error('defineMethod failed');
-				break;
-			}
-			ok = true;
-			await vscode.env.clipboard.writeText(def);
-			vscode.window.showInformationMessage(`✔️ Copied: ${def}`);
-		} while (false);
-		if (!ok) {
-			const sel = getSelectionOrLine(editor);
-			if (sel) {
-				await vscode.env.clipboard.writeText(sel);
-				vscode.window.showErrorMessage('Failed to copy definition. Copied current selection instead.');
-			} else {
-				vscode.window.showErrorMessage('Failed to copy definition.');
-			}
+		try {
+			await execCopyDef();
+		} catch (error) {
+			vscode.window.showInformationMessage(`Failed to copy def. Falling back to normal copy.`);
+			vscode.commands.executeCommand("editor.action.clipboardCopyAction");
 		}
 	});
-
 	context.subscriptions.push(disposable);
 	console.log('activated');
 }
