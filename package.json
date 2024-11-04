@@ -1,7 +1,7 @@
 {
   "name": "cpp-def-paster",
   "displayName": "C++ Definition Paster",
-  "description": "Quickly copy your C++ declarations and have their definitions ready to paste!",
+  "description": "Copy the Prototype, Paste the Definition.",
   "version": "0.1.0",
   "engines": {
     "vscode": "^1.94.0"
@@ -21,12 +21,11 @@
     "commands": [
       {
         "command": "cpp-def-paster.copyDefinition",
-        "title": "Copy Definition"
+        "title": "%command.copyDefinition.title%"
       },
       {
         "command": "cpp-def-paster.magicCopy",
-        "title": "Magic Copy: Select from Left to Right for Normal Copying; Select from Right to Left for Definition Copying.",
-        "shortTitle": "Magic Copy"
+        "title": "%command.magicCopy.title%"
       }
     ],
     "keybindings": [
@@ -38,17 +37,17 @@
       {
         "command": "cpp-def-paster.magicCopy",
         "key": "ctrl+c",
-        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c) && config.magicCopyEnabled"
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c) && config.magicCopy.enabled"
       }
     ],
     "configuration": {
       "type": "object",
       "properties": {
-        "magicCopyEnabled": {
+        "magicCopy.enabled": {
           "type": "boolean",
-          "default": false,
-          "title": "Magic Copy",
-          "description": "Enable or disable the Magic Copy feature. When enabled, select from left to right for normal copying; select from right to left for definition copying."
+          "default": true,
+          "title": "%config.magicCopy.enabled.title%",
+          "description": "%config.magicCopy.enabled.desc%"
         }
       }
     }

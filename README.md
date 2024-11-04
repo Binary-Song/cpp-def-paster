@@ -1,18 +1,11 @@
-# C++ Definition Paster README
+# C++ Definition Paster
 
-A simple tool to help you generate c++ definitions.
+🌏 [中文](README.zh-CN.md) | [English](README.md)
 
-## Quick Start
+## Usage
 
-![demo](img/demo.gif)
+Select a function prototype from **RIGHT to LEFT**, then press `Ctrl`+`C` to copy its definition. If you select in the opposite direction, `Ctrl`+`C` will function normally.
 
-1. Select or place the cursor inside a function prototype.
+![demo](img/magic-copy-demo.gif)
 
-// todo update this
-## Tips
-
-- You can use `ctrl+insert` to enforce a normal copy.
-
-- If you want to change the key binding, go to File - Preferences - Keyboard Shortcuts and search for `cpp-def-paster.copyDefinition`.
-
-This extension is still in early development; any feedback would be greatly appreciated!
+This extension is still in early development. Any feedback would be greatly appreciated!
