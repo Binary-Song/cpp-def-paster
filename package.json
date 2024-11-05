@@ -16,7 +16,7 @@
   },
   "publisher": "binary-song",
   "activationEvents": [],
-  "main": "./out/extension.js",
+  "main": "./out/code/main.js",
   "contributes": {
     "commands": [
       {
