@@ -152,11 +152,11 @@ export class Tokenizer {
 		} else if (m = this.text.match(/^\s+/g)) {
 			return this.chop(m[0].length, TokenType.Space);
 		}
-		// else if (m = this.text.startsWith("/*")) {
-		// 	return this.tokenizeBlockComment();
-		// } else if (m = this.text.match(/^(#|\/\/).*\n/g)) {
-		// 	return this.chop(m[0].length, TokenType.Comment);
-		// }  
+		else if (m = this.text.startsWith("/*")) {
+			return this.tokenizeBlockComment();
+		} else if (m = this.text.match(/^(#|\/\/).*\n/g)) {
+			return this.chop(m[0].length, TokenType.Comment);
+		}  
 		else if (m = this.text.startsWith("'")) {
 			return this.tokenizeStringLiteral(QuoteType.Single);
 		} else if (m = this.text.startsWith('"')) {

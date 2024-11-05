@@ -29,6 +29,16 @@ function tokenizeTest(inputText: string, expectedTokens: Token[], pred?: (token:
 	assert.strictEqual(actual.length, expectedTokens.length);
 };
 
+function defineMethodTest(classCtx: string, methodCtx: string, expected: string)
+{
+	let config =  new DefinerConfig();
+	let editorCtx = new EditorContext(methodCtx, classCtx);
+	config.body = "";
+	const definer = new Definer(editorCtx, config);
+	let res = definer.defineMethods();
+	assert.strictEqual(res, expected.trim());
+}
+
 suite('cpp-def-paster', () => {
 	vscode.window.showInformationMessage('Start all tests.');
 	test('tokenizer 1', () => {
@@ -268,29 +278,26 @@ suite('cpp-def-paster', () => {
 	test('definition 1', () => {
 		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>>{";
 		let methodCtx = "virtual __declspec('blablabla') void __stdcall f() const volatile noexcept wtf ;";
-		const definer = new Definer(new EditorContext(methodCtx, classCtx), new DefinerConfig());
-		const defn = definer.defineMethods();
-		assert.strictEqual(defn, "__declspec('blablabla') void __stdcall Happy::f() const volatile noexcept wtf ");
+		let expected = "__declspec('blablabla') void __stdcall Happy::f() const volatile noexcept wtf ";
+		defineMethodTest(classCtx, methodCtx, expected);
 	});
 	test('definition 2', () => {
 		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>,a<b>,c>,d,e{";
 		let methodCtx = "virtual static __declspec('') void __stdcall f() const volatile noexcept override;";
-		const definer = new Definer(new EditorContext(methodCtx, classCtx), new DefinerConfig());
-		const defn = definer.defineMethods();
-		assert.strictEqual(defn, "__declspec('') void __stdcall Happy::f() const volatile noexcept ");
+		let expected =  "__declspec('') void __stdcall Happy::f() const volatile noexcept ";
+		defineMethodTest(classCtx, methodCtx, expected);
+	
 	});
 	test('definition 3', () => {
 		let classCtx = "class Happy final:d,e{";
 		let methodCtx = "virtual static __declspec('') void __stdcall f() const volatile noexcept override final;";
-		const definer = new Definer(new EditorContext(methodCtx, classCtx), new DefinerConfig());
-		const defn = definer.defineMethods();
-		assert.strictEqual(defn, "__declspec('') void __stdcall Happy::f() const volatile noexcept ");
+		let expected =  "__declspec('') void __stdcall Happy::f() const volatile noexcept ";
+		defineMethodTest(classCtx, methodCtx, expected);
 	});
 	test('definition 4', () => {
 		let classCtx = "// class Comment {};\nclass A {\n";
 		let methodCtx = "virtual void _f() const";
-		const definer = new Definer(new EditorContext(methodCtx, classCtx), new DefinerConfig());
-		const defn = definer.defineMethods();
-		assert.strictEqual(defn, "void __stdcall A::_f() const");
+		let expected = "void __stdcall A::_f() const";
+		defineMethodTest(classCtx, methodCtx, expected);
 	});
 });

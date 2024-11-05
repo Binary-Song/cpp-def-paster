@@ -1,3 +1,3 @@
 ﻿# Core
 
-This module geneartes definitions without directly calling VSCode APIs. Core works with strings only.
+This module generates definitions without directly invoking VSCode APIs. The core functionality operates exclusively with strings.

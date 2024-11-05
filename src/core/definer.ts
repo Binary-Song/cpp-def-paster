@@ -66,7 +66,7 @@ export class Definer {
 			allDefs = allDefs.trimEnd();
 			allDefs += "\n\n";
 		}
-		return allDefs;
+		return allDefs.trim();
 	}
 
 	private defineMethod(classDecl: ClassDecl, methodDecl: MethodDecl): string {

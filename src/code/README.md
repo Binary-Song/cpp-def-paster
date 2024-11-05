@@ -1,3 +1,3 @@
 ﻿# Code
 
-This module handles VSCode-specific stuff, and provides input to the 'Core' modules.
+This module manages VSCode-specific functionality and supplies input to the 'Core' modules.
