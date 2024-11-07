@@ -1,1 +1,1 @@
-﻿- comment containing 'class' messes up parsing
+- comment containing 'class' messes up parsing

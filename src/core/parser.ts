@@ -1,4 +1,4 @@
-﻿/* eslint-disable curly */
+/* eslint-disable curly */
 import * as alg from '../tools/algorithm'
 import { TokenType, Token, Tokenizer } from './tokenizer'
 

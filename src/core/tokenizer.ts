@@ -1,4 +1,4 @@
-﻿/* eslint-disable curly */
+/* eslint-disable curly */
 export enum TokenType {
 	Unknown,
 	/**

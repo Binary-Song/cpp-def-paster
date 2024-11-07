@@ -1,4 +1,4 @@
-﻿import { Tokenizer, Token, TokenType } from './tokenizer'
+import { Tokenizer, Token, TokenType } from './tokenizer'
 import { Parser, MethodDecl, ClassDecl } from './parser'
 
 /**

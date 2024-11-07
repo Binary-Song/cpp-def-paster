@@ -1,4 +1,4 @@
-﻿{
+{
     "command.copyDefinition.title": "C++ 函数定义复制器: 复制定义",
     "command.magicCopy.title": "C++ 函数定义复制器: 魔法复制（从右向左选择时，拷贝定义）",
     "config.magicCopy.enabled.title": "启用魔法复制",
