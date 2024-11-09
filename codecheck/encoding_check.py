@@ -25,12 +25,12 @@ def check_repo_encoding(repo_path):
         all_files_passed = True
         for file_info in files:
             parts = file_info.split()
-            if len(parts) != 4:
+            if len(parts) < 4:
                 logging.error(f"Failed to parse git ls-files output: {file_info}")
                 all_files_passed = False
                 continue
-            index_eol, workdir_eol, attr, file_rel_path = parts
-            is_text_file = '-text' not in index_eol
+            index_eol, workdir_eol, attr, file_rel_path = parts[0], parts[1], parts[2], parts[3]
+            is_text_file = '-text' not in attr
             if is_text_file: # only check text files
                 file_path = os.path.join(repo_path, file_rel_path)
                 if not check_encoding(file_path):
