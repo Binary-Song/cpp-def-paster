@@ -106,16 +106,22 @@ export class Parser {
         let tokenizer = this.tokenizer;
         let token;
         let scopeStack: { classDecl: ClassDecl | undefined }[] = [];
+        let limit = 200000;
         while ((token = tokenizer.next()) !== undefined) {
+            if (limit-- <= 0)
+                return undefined;
             if (token.type == TokenType.ClassKeyword) {
-                tokenizer.prepend(token.text);
-                let classDecl = this.tryParse(() => this.parseClassDecl());
+                let tokenText = token.text;
+                let classDecl = this.tryParse(() => {
+                    tokenizer.prepend(tokenText);
+                    return this.parseClassDecl();
+                });
                 if (classDecl) {
-                    scopeStack.push({classDecl: classDecl});
+                    scopeStack.push({ classDecl: classDecl });
                 }
             }
             else if (token.type == TokenType.LBrace) {
-                scopeStack.push({classDecl: undefined});
+                scopeStack.push({ classDecl: undefined });
             }
             else if (token.type == TokenType.RBrace) {
                 if (scopeStack.length > 0) {

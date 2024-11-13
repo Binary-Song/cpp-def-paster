@@ -14,7 +14,7 @@ suite('definer', () => {
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
 	test('definition 2', () => {
-		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>,a<b>,c>,d,e{";
+		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>,a<DATAREDACTED.h>,c>,d,e{";
 		let methodCtx = "virtual static __declspec('') void __stdcall f() const volatile noexcept override;";
 		let expected =  "__declspec('') void __stdcall Happy::f() const volatile noexcept ";
 		defineMethodTest(classCtx, methodCtx, expected);
@@ -86,4 +86,112 @@ suite('definer', () => {
 		let expected = undefined;
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
+	test('crazy mess', () => {
+		const code  = `
+		// -------------------------- 
+		// 测试测试测试测试测试测试测试测试测试
+// -------------------------------------- 
+#ifndef __XXXXXX_H__
+#define __XXXXXX_H__
+ 
+#include "DATAREDACTED.h"
+#include "DATAREDACTED.h"
+#include "DATAREDACTED.h"
+
+#ifdef XXX
+#include "DATAREDACTED.h"
+#endif
+
+#include "DATAREDACTED.h"
+#include "DATAREDACTED.h"
+
+#include <DATAREDACTED.h>
+#include <DATAREDACTED.h>
+#include "DATAREDACTED.h"
+#include "DATAREDACTED.h"
+#include <DATAREDACTED.h>
+
+#ifndef XX
+#include "DATAREDACTED.h"
+#endif
+#include "DATAREDACTED.h"
+#include "DATAREDACTED.h"
+#include <DATAREDACTED.h>
+#ifdef XXXX
+#include <DATAREDACTED.h>
+#include "DATAREDACTED.h"
+#endif
+
+// !@#$%^&*()_+ COMMMMMMMENT !!!!
+
+#define X_XX_XXX_XXXX 9999
+
+class A;
+class B;
+class C;
+class D;
+#ifdef _OS
+class E;
+class F;
+#endif
+class G;
+class H;
+class I;
+class J;
+class K;
+
+#ifdef 
+class DATAREDACTED
+{
+public:
+	DATAREDACTED() { }
+	inline aa aa() const { return aa; }
+	inline aa aa() const { return aa; }
+	inline aa aa() const { return aa; }
+	inline aa aa() const { return aa; }
+	inline aa::aa aa() const { return aa; }
+	inline aaa::aa aa() const { return aa; }
+	inline aa::aa aa() const { return aa; }
+	inline aa aa() const { return aa; }
+	inline aa::aa bb() const { return aa; }
+	inline aa aa() const  { return aa; }
+	inline aa::aa aa() const { return aa; }
+	
+private:
+	xx xx;
+	xx xx;
+	xx xx;
+	xx xx;
+};
+#endif
+
+class STUPID_DECL TTTT
+	: public X1
+	, public X2
+	, public X3<A1>
+	, public X4<A1>
+	, public X5
+	, public X6
+	, public X7
+	, public X8
+{
+	SOME_MACRO
+#ifdef
+	X_XXX_XXXXX_XXXXXXX(1, 2, 3, 4, 5, 6, 7, 8, 9, 0)
+#endif
+public:
+	TTTT(AA *aa, 
+			AA* aa, 
+			AA* aa = NULL, 
+			AA* aa = NULL, 
+		   const AA& aa = aa(),
+		   aa::aa aa = aa::aa);
+	~TTTT();
+	bar* foo() const; `;
+		let classCtx = code;
+		let methodCtx = "bar* foo() const; ";
+		let expected = "bar * TTTT::foo() const";
+		defineMethodTest(classCtx, methodCtx, expected);
+	}
+	);
 });
