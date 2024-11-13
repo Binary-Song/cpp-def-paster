@@ -1,4 +1,4 @@
-﻿import { Tokenizer, Token, TokenType } from '../core/tokenizer'
+import { Tokenizer, Token, TokenType } from '../core/tokenizer'
 import { Parser, SegmentType } from '../core/parser'
 import { Definer, DefinerConfig, EditorContext } from '../core/definer'
 import * as assert from 'assert';

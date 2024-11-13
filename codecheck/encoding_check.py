@@ -3,47 +3,12 @@ import sys
 import subprocess
 import logging
 from pathlib import Path
-
-def check_encoding(file_path):
-    try:
-        with open(file_path, 'rb') as f:
-            raw_data = f.read()
-            if raw_data.startswith(b'\xef\xbb\xbf'):
-                logging.error(f"File {file_path} contains BOM.")
-                return False
-            raw_data.decode('utf-8')
-
-    except UnicodeDecodeError:
-        logging.error(f"File {file_path} is not UTF-8 encoded.")
-        return False
-    return True
-
-def check_repo_encoding(repo_path):
-    try:
-        result = subprocess.run(['git', 'ls-files', '--eol'], cwd=repo_path, stdout=subprocess.PIPE, text=True, check=True)
-        files = result.stdout.splitlines()
-        all_files_passed = True
-        for file_info in files:
-            parts = file_info.split()
-            if len(parts) < 4:
-                logging.error(f"Failed to parse git ls-files output: {file_info}")
-                all_files_passed = False
-                continue
-            index_eol, workdir_eol, attr, file_rel_path = parts[0], parts[1], parts[2], parts[3]
-            is_text_file = '-text' not in attr
-            if is_text_file: # only check text files
-                file_path = os.path.join(repo_path, file_rel_path)
-                if not check_encoding(file_path):
-                    all_files_passed = False
-        return all_files_passed
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Error: {e}")
-        return False
+import argparse
 
 def check_diff(repo_path : Path, incremental=False):
     empty_tree_hash = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
-    diff_target = 'HEAD' if incremental == True else empty_tree_hash
-    result = subprocess.run(['git', 'diff', '--staged', diff_target],
+    cmd =['git', 'diff', '--staged', 'HEAD'] if incremental else ['git', 'diff', empty_tree_hash, 'HEAD']
+    result = subprocess.run(cmd,
                             cwd=repo_path,
                             stdout=subprocess.PIPE,
                             text=False,
@@ -64,23 +29,32 @@ def check_diff(repo_path : Path, incremental=False):
             if current_file.startswith('b/') or current_file.startswith('a/'):
                 # current_file example: src/test/extension.test.ts
                 current_file = current_file[2:]
-        if b'\r' in line:
+        if line.startswith(b'+') and b'\r' in line:
             if current_file not in bad_file_set:
                 bad_file_set.add(current_file)
-                logging.error(f"Staged area diff: CR character in file {current_file}, see {diff_path}:{i}. Only LF line ending is allowed.")
+                logging.error(f"CR in file {current_file}, see {diff_path}:{i}.")
             ok = False
-    
+        
+        if line.startswith(b'+') and b'\xef\xbb\xbf' in line:
+            if current_file not in bad_file_set:
+                bad_file_set.add(current_file)
+                logging.error(f"BOM in file {current_file}, see {diff_path}:{i}.")
+            ok = False
+
     return ok
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Check for encoding issues in git diffs.")
+    parser.add_argument('--full', action='store_true', help='Run a full check instead of an incremental one.')
+    args = parser.parse_args()
+
     repo_path = (Path(__file__) / ".." / "..").resolve()
     log_path = (repo_path / "log").resolve()
     os.makedirs("log", exist_ok=True)
     passed = True
-    # if not check_repo_encoding(repo_path):
-    #     passed = False
 
-    if not check_diff(repo_path, incremental=True):
+    if not check_diff(repo_path, incremental=not args.full):
         passed = False
     
     if passed:
