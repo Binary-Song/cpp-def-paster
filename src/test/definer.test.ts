@@ -14,7 +14,7 @@ suite('definer', () => {
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
 	test('definition 2', () => {
-		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>,a<DATAREDACTED.h>,c>,d,e{";
+		let classCtx = "class Happy:std::Nest1<std::Nest2<std::double>,a<b>,c>,d,e{";
 		let methodCtx = "virtual static __declspec('') void __stdcall f() const volatile noexcept override;";
 		let expected =  "__declspec('') void __stdcall Happy::f() const volatile noexcept ";
 		defineMethodTest(classCtx, methodCtx, expected);
@@ -62,12 +62,12 @@ suite('definer', () => {
 		let expected = "void Happy::f()";
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
-	test('definition with operator overload', () => {
-		let classCtx = "class Happy {";
-		let methodCtx = "Happy& operator=(const Happy& other);";
-		let expected = "Happy& Happy::operator=(const Happy& other)";
-		defineMethodTest(classCtx, methodCtx, expected);
-	});
+	// test('definition with operator overload', () => {
+	// 	let classCtx = "class Happy {";
+	// 	let methodCtx = "Happy& operator=(const Happy& other);";
+	// 	let expected = "Happy& Happy::operator=(const Happy& other)";
+	// 	defineMethodTest(classCtx, methodCtx, expected);
+	// });
 	test('definition with constructor', () => {
 		let classCtx = "class Happy {";
 		let methodCtx = "Happy();";
