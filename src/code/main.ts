@@ -67,7 +67,6 @@ export function activate(context: vscode.ExtensionContext) {
 			const extension = new Extension(editor);
 			await extension.copyDefinition();
 		} catch (error) {
-			vscode.window.showInformationMessage(`Failed to copy def. Falling back to normal copy.`);
 			vscode.commands.executeCommand("editor.action.clipboardCopyAction");
 		}
 	}));
