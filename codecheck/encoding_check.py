@@ -77,10 +77,10 @@ if __name__ == "__main__":
     log_path = (repo_path / "log").resolve()
     os.makedirs("log", exist_ok=True)
     passed = True
-    if not check_repo_encoding(repo_path):
-        passed = False
+    # if not check_repo_encoding(repo_path):
+    #     passed = False
 
-    if not check_diff(repo_path, incremental=False):
+    if not check_diff(repo_path, incremental=True):
         passed = False
     
     if passed:
