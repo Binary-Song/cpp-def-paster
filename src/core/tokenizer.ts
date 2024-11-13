@@ -113,24 +113,30 @@ export class Tokenizer {
 	}
 
 	/** 
-	 * Push the text to be parsed onto an internal stack.
+	 * Push the text to be parsed onto a stack.
 	 */
-	public save() {
+	public push() {
 		this.stack.push(this.text);
 	}
 
 	/** 
-	 * Pop the internal stack to restore the last saved text.
-	 * @param drop If true, simply drop the last saved text.
+	 * Pop the stack to restore the last `push`ed text.
 	 */
-	public restore(drop?: boolean) {
-		drop = drop ?? false;
+	public pop() {
 		let stackText = this.stack.pop();
 		if (stackText !== undefined) {
-			if (!drop)
-				this.text = stackText;
+			this.text = stackText;
 		} else {
-			throw new Error(`Tokenizer.restore: stack is empty!`);
+			throw new Error(`Tokenizer.pop: stack is empty!`);
+		}
+	}
+
+	/**
+	 * Discard the last `push`ed text.
+	 */
+	public drop() {
+		if (this.stack.pop() === undefined) {
+			throw new Error(`Tokenizer.drop: stack is empty!`);
 		}
 	}
 
@@ -156,7 +162,7 @@ export class Tokenizer {
 			return this.tokenizeBlockComment();
 		} else if (m = this.text.match(/^(#|\/\/).*\n/g)) {
 			return this.chop(m[0].length, TokenType.Comment);
-		}  
+		}
 		else if (m = this.text.startsWith("'")) {
 			return this.tokenizeStringLiteral(QuoteType.Single);
 		} else if (m = this.text.startsWith('"')) {
@@ -233,8 +239,11 @@ export class Tokenizer {
 				if (layer === 0) {
 					break;
 				}
-			} else {
-				comment += this.chop(2);
+			} else if (this.text.length === 0) {
+				break;
+			}
+			else {
+				comment += this.chop(1);
 			}
 		}
 		return new Token(comment, TokenType.Comment);

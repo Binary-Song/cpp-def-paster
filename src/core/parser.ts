@@ -33,6 +33,12 @@ export enum SegmentType {
      */
     Symbol,
     /**
+     * `operator+` etc.
+     * @example `operator+`
+     * @example `operator*`
+     */
+    OperatorName,
+    /**
      * An identifier.
      * @example `Q_DECL_EXPORT`
      * @example `std::uint8_t`
@@ -95,6 +101,39 @@ export class Parser {
         }
         return undefined;
     }
+
+    public parseTextUpToCursor(): ClassDecl | undefined {
+        let tokenizer = this.tokenizer;
+        let token;
+        let scopeStack: { classDecl: ClassDecl | undefined }[] = [];
+        while ((token = tokenizer.next()) !== undefined) {
+            if (token.type == TokenType.ClassKeyword) {
+                tokenizer.prepend(token.text);
+                let classDecl = this.tryParse(() => this.parseClassDecl());
+                if (classDecl) {
+                    scopeStack.push({classDecl: classDecl});
+                }
+            }
+            else if (token.type == TokenType.LBrace) {
+                scopeStack.push({classDecl: undefined});
+            }
+            else if (token.type == TokenType.RBrace) {
+                if (scopeStack.length > 0) {
+                    scopeStack.pop();
+                }
+            }
+        }
+        if (scopeStack.length === 0) {
+            return undefined;
+        }
+        for (let i = scopeStack.length - 1; i >= 0; i--) {
+            if (scopeStack[i].classDecl !== undefined) {
+                return scopeStack[i].classDecl;
+            }
+        }
+        return undefined;
+    }
+
     /**
      * Parses the `class` keyword, any attributes following the `class` keyword, the class name and the `final` specifier. 
      * @example `class MyClass`
@@ -366,31 +405,37 @@ export class Parser {
         return methods.length > 0 ? methods : undefined;
     }
 
+
+    /**
+     * Attempts to parse an AST node using the provided parsing function.
+     * The tokenizer state is saved before parsing. If parsing fails (i.e., `tryFn` returns `undefined`),
+     * the tokenizer is restored to the saved state.
+     * 
+     * @param tryFn - A function that attempts to parse an AST node and returns it, or `undefined` if parsing fails.
+     * @returns The parsed AST node if successful, otherwise `undefined`.
+     */
+    private tryParse<Ast>(tryFn: () => Ast | undefined) {
+        this.tokenizer.push();
+        const ast = tryFn();
+        if (ast === undefined) // failed
+            this.tokenizer.pop()
+        else
+            this.tokenizer.drop();
+        return ast;
+    }
+
     /**
      * Parses a segment. See {@link Segment}.
      */
     private parseSegment(): Segment | undefined {
-        /**
-         * Currently a segment has many variations (see `SegmentType` ). This parser will try ONE variation. If that fails, it will restore the tokenizer state so we can try the next variation from a clean slate. Otherwise, keep it that way.
-         * @param subParse A parsing function that parses one variation of a segment.
-         * @returns A `Segment` if successful, an `undefined` if not.
-         */
-        const tryParseSegment = (subParse: () => Segment | undefined) => {
-            this.tokenizer.save();
-            const seg = subParse();
-            // If failed, dont drop the saved stuff. 
-            const dontDrop = (seg === undefined);
-            this.tokenizer.restore(!dontDrop);
-            return seg;
-        };
         let segment;
-        if (segment = tryParseSegment(() => { return this.parseNamedSegment(); })) {
+        if (segment = this.tryParse(() => this.parseNamedSegment())) {
             return segment;
         }
-        if (segment = tryParseSegment(() => { return this.parseAttributeLikeSegment(); })) {
+        if (segment = this.tryParse(() => this.parseAttributeLikeSegment())) {
             return segment;
         }
-        if (segment = tryParseSegment(() => { return this.parseSymbolSegment(); })) {
+        if (segment = this.tryParse(() => this.parseSymbolSegment())) {
             return segment;
         }
         return undefined;
@@ -408,6 +453,22 @@ export class Parser {
             case TokenType.Star:
                 return { text: token.text, type: SegmentType.Symbol };
         }
+        return undefined;
+    }
+
+    private parseOperatorNameSegment(): Segment | undefined {
+        // const token = this.nextGoodToken();
+        // if (!token)
+        //     return undefined;
+        // if (token.type === TokenType.Ident && token.text == "operator") {
+        //     const op = this.nextGoodToken();
+        //     if (!op)
+        //         return undefined;
+        //     switch (op.type) {
+        //         case TokenType.Plus:
+        //     }
+        //     return { text: token.text + op.text, type: SegmentType.OperatorName };
+        // }
         return undefined;
     }
 
