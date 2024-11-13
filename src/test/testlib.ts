@@ -33,7 +33,16 @@ export function defineMethodTest(classCtx: string, methodCtx: string, expected: 
 {
 	let config =  new DefinerConfig();
 	let editorCtx = new EditorContext(methodCtx, classCtx);
-	config.body = "";
+	config.textAfterDef = "";
+	const definer = new Definer(editorCtx, config);
+	let res = definer.defineMethods();
+	assert.strictEqual(res, expected ? expected.trim() : undefined );
+}
+
+
+export function defineMethodTest2(config: DefinerConfig, classCtx: string, methodCtx: string, expected: string | undefined)
+{
+	let editorCtx = new EditorContext(methodCtx, classCtx);
 	const definer = new Definer(editorCtx, config);
 	let res = definer.defineMethods();
 	assert.strictEqual(res, expected ? expected.trim() : undefined );

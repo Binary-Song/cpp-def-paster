@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { Tokenizer, Token, TokenType } from '../core/tokenizer'
 import { Parser, SegmentType } from '../core/parser'
 import { Definer, DefinerConfig, EditorContext } from '../core/definer'
-import { tokenizeTest, defineMethodTest } from '../test/testlib'
+import { tokenizeTest, defineMethodTest, defineMethodTest2 } from '../test/testlib'
 
 suite('definer', () => {
 	vscode.window.showInformationMessage('Start all tests.');
@@ -85,6 +85,16 @@ suite('definer', () => {
 		let methodCtx = "auto f = [](){};";
 		let expected = undefined;
 		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with custom cfg', () => {
+		let classCtx = "class Happy {";
+		let methodCtx = "~Happy();Happy();f();";
+		let expected = "Happy::~Happy()<1><2>Happy::Happy()<1><2>Happy::f()<1><3>";
+		let cfg = new DefinerConfig();
+		cfg.textAfterDef = "<1>";
+		cfg.textBetweenMultipleDefs = "<2>";
+		cfg.textAfterMultipleDefs = "<3>";
+		defineMethodTest2(cfg, classCtx, methodCtx, expected);
 	});
 	test('crazy mess', () => {
 		const code  = `

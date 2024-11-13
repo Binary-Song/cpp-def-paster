@@ -2,7 +2,7 @@
   "name": "cpp-def-paster",
   "displayName": "C++ Definition Paster",
   "description": "Copy the Prototype, Paste the Definition.",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.94.0"
   },

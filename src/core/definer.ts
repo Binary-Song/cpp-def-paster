@@ -18,7 +18,9 @@ export class EditorContext {
  * The configuration for the definer.
  */
 export class DefinerConfig {
-	body: string = "\n{\n}\n";
+	textAfterDef: string = "";
+	textBetweenMultipleDefs: string = "\n{\n}\n";
+	textAfterMultipleDefs: string = "\n{\n}\n";
 	discardedSegments: string[] = ["override", "virtual", "explicit", "static", "final"];
 }
 
@@ -40,10 +42,6 @@ export class Definer {
 		return this.editorContext.textUpToCursor;
 	}
 
-	private get body(): string {
-		return this.definerConfig.body;
-	}
-
 	public defineMethods() {
 		let tokenizer = new Tokenizer(this.editorContext.textUpToCursor);
 		let parser = new Parser(tokenizer);
@@ -55,15 +53,22 @@ export class Definer {
 		let methodDecls = parser.parseMethodDecls();
 		if (!methodDecls)
 			return undefined;
-		let allDefs = "";
-		for (let methodDecl of methodDecls) {
-			let def = this.defineMethod(classDecl, methodDecl);
-			allDefs += def;
-			allDefs += this.body;
-			allDefs = allDefs.trimEnd();
-			allDefs += "\n\n";
+		if (methodDecls.length === 1) {
+			let def = this.defineMethod(classDecl, methodDecls[0]).trim() + this.definerConfig.textAfterDef;
+			return def;
 		}
-		return allDefs.trim();
+
+		let allDefs = "";
+		let firstOne = true;
+		for (let methodDecl of methodDecls) {
+			if (!firstOne)
+				allDefs += this.definerConfig.textBetweenMultipleDefs;
+			let def = this.defineMethod(classDecl, methodDecl).trim() + this.definerConfig.textAfterDef;
+			allDefs += def;
+			firstOne = false;
+		}
+		allDefs += this.definerConfig.textAfterMultipleDefs;
+		return allDefs;
 	}
 
 	private defineMethod(classDecl: ClassDecl, methodDecl: MethodDecl): string {
