@@ -1,8 +1,14 @@
 # Change Log
 
-All notable changes to the "cpp-def-paster" extension will be documented in this file.
+## [1.1.0] - 2024-11-14
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+### Changed
+
+- Setting `magicCopy.enabled` is renamed to `cpp-def-paster.magicCopy.enabled`.
+
+### Added
+
+- Some Settings to customize how definitions should be generated.
 
 ## [1.0.0] - 2024-11-13
 

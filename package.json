@@ -2,12 +2,12 @@
   "name": "cpp-def-paster",
   "displayName": "C++ Definition Paster",
   "description": "Copy the Prototype, Paste the Definition.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "engines": {
     "vscode": "^1.94.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages"
   ],
   "icon": "img/thumbnail.png",
   "galleryBanner": {
@@ -37,17 +37,37 @@
       {
         "command": "cpp-def-paster.magicCopy",
         "key": "ctrl+c",
-        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c) && config.magicCopy.enabled"
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c) && config.cpp-def-paster.magicCopy.enabled"
       }
     ],
     "configuration": {
       "type": "object",
       "properties": {
-        "magicCopy.enabled": {
+        "cpp-def-paster.magicCopy.enabled": {
           "type": "boolean",
           "default": true,
           "title": "%config.magicCopy.enabled.title%",
           "description": "%config.magicCopy.enabled.desc%"
+        },
+        "cpp-def-paster.definition.textAfterDef": {
+          "type": "string",
+          "default": "",
+          "title": "%config.textAfterDef.title%",
+          "description": "%config.textAfterDef.desc%"
+        },
+        "cpp-def-paster.definition.textBetweenMultipleDefs": {
+          "type": "string",
+          "default": "\n{\n}\n",
+          "editPresentation": "multilineText",
+          "title": "%config.textBetweenMultipleDefs.title%",
+          "description": "%config.textBetweenMultipleDefs.desc%"
+        },
+        "cpp-def-paster.definition.textAfterMultipleDefs": {
+          "type": "string",
+          "default": "\n{\n}\n",
+          "editPresentation": "multilineText",
+          "title": "%config.textAfterMultipleDefs.title%",
+          "description": "%config.textAfterMultipleDefs.desc%"
         }
       }
     }

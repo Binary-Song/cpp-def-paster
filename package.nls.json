@@ -2,5 +2,11 @@
     "command.copyDefinition.title": "C++ Definition Paster: Copy Definition",
     "command.magicCopy.title": "C++ Definition Paster: Magic Copy (Select from Right to Left to Copy Definition)",
     "config.magicCopy.enabled.title": "Magic Copy Enabled",
-    "config.magicCopy.enabled.desc": "Enable or disable the Magic Copy feature. When enabled, select from left to right for normal copying; select from right to left for definition copying."
+    "config.magicCopy.enabled.desc": "Enable or disable the Magic Copy feature. When enabled, select from left to right for normal copying; select from right to left for definition copying.",
+    "config.textAfterDef.title": "Text After Definition",
+    "config.textAfterDef.desc": "Text to be inserted after each definition when creating one or multiple definitions.",
+    "config.textBetweenMultipleDefs.title": "Text Between Multiple Definitions",
+    "config.textBetweenMultipleDefs.desc": "Text to be inserted between definitions when creating multiple definitions.",
+    "config.textAfterMultipleDefs.title": "Text After Multiple Definitions",
+    "config.textAfterMultipleDefs.desc": "Text to be inserted at the end when creating multiple definitions."
 }

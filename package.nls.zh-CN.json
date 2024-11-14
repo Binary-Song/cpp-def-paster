@@ -2,5 +2,11 @@
     "command.copyDefinition.title": "C++ 函数定义复制器: 复制定义",
     "command.magicCopy.title": "C++ 函数定义复制器: 魔法复制（从右向左选择时，拷贝定义）",
     "config.magicCopy.enabled.title": "启用魔法复制",
-    "config.magicCopy.enabled.desc": "启用或禁用魔法复制功能。启用时，从左到右选择进行正常复制；从右到左选择进行定义复制。"
+    "config.magicCopy.enabled.desc": "启用或禁用魔法复制功能。启用时，从左到右选择进行正常复制；从右到左选择进行定义复制。",
+    "config.textAfterDef.title": "定义后的文本",
+    "config.textAfterDef.desc": "创建一个或多个定义时插入在每个定义后的文本。",
+    "config.textBetweenMultipleDefs.title": "多个定义之间的文本",
+    "config.textBetweenMultipleDefs.desc": "创建多个定义时插入在定义之间的文本。",
+    "config.textAfterMultipleDefs.title": "多个定义后的文本",
+    "config.textAfterMultipleDefs.desc": "创建多个定义时插入在末尾的文本。"
 }
