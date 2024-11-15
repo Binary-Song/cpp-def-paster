@@ -79,6 +79,12 @@ def main():
 
     if args.bump is None:
         args.bump = input_str("bump", BUMP_CHOICES)
+    
+    # Ensure there are no uncommitted changes
+    result = subprocess.run(['git', 'diff', '--cached'], capture_output=True, text=True)
+    if result.stdout.strip():
+        print("Staging area not clean.")
+        return 1
 
     # read package.json, get version
     package_json_path = os.path.join(os.path.dirname(__file__), '..', 'package.json')
@@ -106,15 +112,12 @@ def main():
 
     # git add package.json
     subprocess.run(['git', 'add', package_json_path], check=True)
-
-    # confirm git add
-    confirm = input(f"Change staged. Continue? (y/n):").strip().lower()
+    check_run(['git', 'commit', '-m', f'Bump version to {next_version}'])
+    check_run(['git', 'tag', f'v{next_version}'])
+    confirm = input(f"Do you want to push? (y/n):").strip().lower()
     if confirm != 'y':
         print("Release aborted.")
         return 1
- 
-    check_run(['git', 'commit', '-m', f'Bump version to {next_version}'])
-    check_run(['git', 'tag', f'v{next_version}'])
     check_run(['git', 'push'])
     check_run(['git', 'push', '--tags'])
     return 0
