@@ -82,7 +82,7 @@ export class Extension {
 		}
 		else {
 			await vscode.env.clipboard.writeText(def);
-			vscode.window.showInformationMessage(`✔️ Copied: ${def}`);
+			vscode.window.showInformationMessage(vscode.l10n.t('✔️ Copied: {0}', def));
 		}
 	}
 }

@@ -8,4 +8,13 @@
 
 ![demo](img/magic-copy-demo.gif)
 
-This extension is still in early development. Any feedback would be greatly appreciated!
+## 命令
+
+| 命令                          | 默认键绑定           | 描述                                               |
+|-------------------------------|----------------------|----------------------------------------------------|
+| `cpp-def-paster.copyDefinition` | `Ctrl`+`Alt`+`C`     | 将函数定义复制到剪贴板。                           |
+| `cpp-def-paster.magicCopy`     | `Ctrl`+`C`           | 如果从右到左选择，则将函数定义复制到剪贴板。       |
+
+## 提示
+
+- 如果不想要 `Ctrl`+`C` 复制定义，可以禁用 `magicCopy.enabled`。

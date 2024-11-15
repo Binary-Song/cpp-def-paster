@@ -8,4 +8,13 @@ Select a function prototype from **RIGHT to LEFT**, then press `Ctrl`+`C` to cop
 
 ![demo](img/magic-copy-demo.gif)
 
-This extension is still in early development. Any feedback would be greatly appreciated!
+## Commands
+
+| Command                  | Default Keybinding     | Description                                      |
+|--------------------------|----------------|--------------------------------------------------|
+| `cpp-def-paster.copyDefinition` | `Ctrl`+`Alt`+`C` | Copies function definition to the clipboard. |
+| `cpp-def-paster.magicCopy` | `Ctrl`+`C` | Copies the function definition to the clipboard if the selection is made from right to left. |
+
+## Tips
+
+- You can stop the `Ctrl`+`C` from copying definitions by unchecking the `magicCopy.enabled` setting.

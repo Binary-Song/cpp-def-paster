@@ -17,6 +17,7 @@
   "publisher": "binary-song",
   "activationEvents": [],
   "main": "./out/code/main.js",
+  "l10n": "./l10n",
   "contributes": {
     "commands": [
       {
