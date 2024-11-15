@@ -6,7 +6,7 @@ import { Definer, DefinerConfig, EditorContext } from '../core/definer'
 
 type Context = { begin: number; end: number; text: string }
 
-class Extension {
+export class Extension {
 	editor: vscode.TextEditor;
 
 	constructor(editor: vscode.TextEditor) {
@@ -45,14 +45,14 @@ class Extension {
 		return c.get<T>(key, deflt);
 	}
 
-	public async copyDefinition() {
+	public getDefinition(): string | undefined {
 		const editor = vscode.window.activeTextEditor;
 		if (!editor) {
-			return
+			return undefined;
 		}
 		const selections = this.getSelections();
 		if (!selections) {
-			return
+			return undefined;
 		}
 		const context = new EditorContext(selections[0], this.getTextBeforeSelection());
 		let config = new DefinerConfig();
@@ -62,24 +62,48 @@ class Extension {
 		const definer = new Definer(context, config);
 		const def = definer.defineMethods();
 		if (!def) {
-			return
+			return undefined;
 		}
-		await vscode.env.clipboard.writeText(def);
-		vscode.window.showInformationMessage(`✔️ Copied: ${def}`);
+		return def;
 	}
+
+	public tryGetDefinition(): string | undefined {
+		try {
+			return this.getDefinition();
+		}
+		catch (error) { return undefined; }
+	}
+
+	public async copyDefinition() {
+		const def = this.tryGetDefinition();
+		if (def === undefined) {
+			fallbackCopy();
+			return;
+		}
+		else {
+			await vscode.env.clipboard.writeText(def);
+			vscode.window.showInformationMessage(`✔️ Copied: ${def}`);
+		}
+	}
+}
+
+export function fallbackCopy() {
+	vscode.commands.executeCommand("editor.action.clipboardCopyAction");
+}
+
+export function copyDefinition() {
+	let editor = vscode.window.activeTextEditor;
+	if (!editor) {
+		fallbackCopy();
+		return;
+	}
+	const extension = new Extension(editor);
+	extension.copyDefinition();
 }
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('cpp-def-paster.copyDefinition', async () => {
-		try {
-			let editor = vscode.window.activeTextEditor;
-			if (!editor)
-				throw new Error("no editor");
-			const extension = new Extension(editor);
-			await extension.copyDefinition();
-		} catch (error) {
-			vscode.commands.executeCommand("editor.action.clipboardCopyAction");
-		}
+		copyDefinition();
 	}));
 	context.subscriptions.push(vscode.commands.registerCommand('cpp-def-paster.magicCopy', async () => {
 		const config = vscode.workspace.getConfiguration();
@@ -94,17 +118,9 @@ export function activate(context: vscode.ExtensionContext) {
 		const isZeroLengthSelect = startPos.compareTo(endPos) === 0;
 		const isRightToLeftSelect = startPos.compareTo(cursorPos) === 0;
 		if (!isMultiSelect && !isZeroLengthSelect && isRightToLeftSelect) {
-			try {
-				let editor = vscode.window.activeTextEditor;
-				if (!editor)
-					throw new Error("no editor");
-				const extension = new Extension(editor);
-				await extension.copyDefinition();
-			} catch (error) {
-				vscode.commands.executeCommand("editor.action.clipboardCopyAction");
-			}
+			copyDefinition();
 		} else {
-			vscode.commands.executeCommand("editor.action.clipboardCopyAction");
+			fallbackCopy();
 		}
 
 	}));
