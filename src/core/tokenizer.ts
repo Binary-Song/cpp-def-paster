@@ -85,6 +85,10 @@ export enum TokenType {
 	 * `&`
 	 */
 	Ampersand,
+	/**
+	 * `=`
+	 */
+	Eq,
 }
 
 export class Token {
@@ -203,6 +207,8 @@ export class Tokenizer {
 			return this.chop(m[0].length, TokenType.Star);
 		} else if (m = this.text.match(/^&/g)) {
 			return this.chop(m[0].length, TokenType.Ampersand);
+		} else if (m = this.text.match(/^=/g)) {
+			return this.chop(m[0].length, TokenType.Eq);
 		}
 		return this.chop(1, TokenType.Unknown);
 	}

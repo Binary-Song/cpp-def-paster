@@ -26,6 +26,30 @@ suite('definer', () => {
 		let expected =  "__declspec('') void __stdcall Happy::f() const volatile noexcept ";
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
+	test('definition 4', () => {
+		let classCtx = "class Happy final:d,e{";
+		let methodCtx = "virtual void f(int a) const ;";
+		let expected =  "void Happy::f(int a) const";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition 5', () => {
+		let classCtx = "class Happy final:d,e{";
+		let methodCtx = "virtual void f(int a, int b) const ;";
+		let expected =  "void Happy::f(int a, int b) const";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition 6', () => {
+		let classCtx = "class Happy final:d,e{";
+		let methodCtx = "virtual void f(int ) const ;";
+		let expected =  "void Happy::f(int ) const";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition 7', () => {
+		let classCtx = "class Happy final:d,e{";
+		let methodCtx = "virtual void f(int a = 1) const ;";
+		let expected =  "void Happy::f(int a) const";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
 	test('definition: `class` in comment', () => {
 		let classCtx = "// class Comment {};\nclass A {\n";
 		let methodCtx = "virtual void _f() const;";

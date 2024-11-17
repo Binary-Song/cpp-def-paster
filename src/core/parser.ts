@@ -68,10 +68,12 @@ export enum SegmentType {
  */
 export type Segment = { text: string, type: SegmentType }
 
+export type FuncParam = { name: string, type: ClassName }
+
 /**
  * A method declaration.
  */
-export type MethodDecl = { nameSegment: number, segments: Segment[] }
+export type MethodDecl = { nameSegment: number, segments: Segment[], params: FuncParam[] | undefined }
 
 /**
  * Parses part of the C++ language.
@@ -388,7 +390,9 @@ export class Parser {
                 for (let i = segments.length - 1; i >= 0; i--) {
                     const currentSegment = segments[i];
                     if (currentSegment.type === SegmentType.FunctionLikeWithParen) {
-                        return { nameSegment: i, segments: segments };
+                        // parse args
+                        const params = this.tryParse(() => this.parseFunctionParamList());
+                        return { nameSegment: i, segments: segments, params: params };
                     }
                 }
                 return undefined;
@@ -420,15 +424,18 @@ export class Parser {
      * @param tryFn - A function that attempts to parse an AST node and returns it, or `undefined` if parsing fails.
      * @returns The parsed AST node if successful, otherwise `undefined`.
      */
-    private tryParse<Ast>(tryFn: () => Ast | undefined) {
+    private tryParse<Ast>(tryFn: () => Ast | undefined, overrideText: string | undefined = undefined) {
         this.tokenizer.push();
+        if (overrideText !== undefined)
+            this.tokenizer.text = overrideText;
         const ast = tryFn();
         if (ast === undefined) // failed
-            this.tokenizer.pop()
+            this.tokenizer.pop();
         else
             this.tokenizer.drop();
         return ast;
     }
+
 
     /**
      * Parses a segment. See {@link Segment}.
@@ -560,6 +567,56 @@ export class Parser {
             }
         }
         return undefined;
+    }
+
+    /**
+     *  Parses function name and param list.
+     */
+    private parseFunctionParamList()
+    {
+        const funcName = this.nextGoodToken();
+        if (funcName === undefined || funcName.type !== TokenType.Ident) {
+            return undefined;
+        }
+        const leftParen = this.nextGoodToken();
+        if (leftParen === undefined || leftParen.type !== TokenType.LParen) {
+            return undefined;
+        }
+        
+        // actual param list
+        const params = this.parseCommaSeparatedList(() => this.parseFunctionParam());
+        
+        const rightParen = this.nextGoodToken();
+        if (rightParen === undefined || rightParen.type !== TokenType.RParen) {
+            return undefined;
+        }
+
+        return params;
+    }
+
+    private parseFunctionDefaultParamValue(): string | undefined
+    {
+        const eq = this.nextGoodToken();
+        if (eq === undefined || eq.type !== TokenType.Eq) {
+            return undefined;
+        }
+        // todo: parse init expr
+    }
+
+    private parseFunctionParam(): FuncParam | undefined
+    {
+        const paramType = this.parseClassName();
+        if (paramType === undefined)
+            return undefined;
+      
+        const paramName = this.nextGoodToken();
+        if (paramName === undefined || paramName.type !== TokenType.Ident) {
+            return undefined;
+        }
+
+     
+
+        return { type: paramType, name: paramName.text };
     }
 }
 
