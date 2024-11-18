@@ -1,6 +1,6 @@
 /* eslint-disable curly */
 import * as alg from '../tools/algorithm'
-import { TokenType, Token, Tokenizer } from './tokenizer'
+import { TokenType, Token, Tokenizer, TokenizerStack } from './tokenizer'
 
 /**
  * The name of a class.
@@ -80,10 +80,14 @@ export type MethodDecl = { nameSegment: number, segments: Segment[], params: Fun
  */
 export class Parser {
 
-    tokenizer: Tokenizer;
+    tokenizerStack: TokenizerStack;
 
     constructor(tokenizer: Tokenizer) {
-        this.tokenizer = tokenizer;
+        this.tokenizerStack = new TokenizerStack(tokenizer);
+    }
+
+    get tokenizer() {
+        return this.tokenizerStack.current;
     }
 
     /**
@@ -428,12 +432,12 @@ export class Parser {
      * 
      */
     private tryParse<Ast>(tryFn: () => Ast | undefined) {
-        this.tokenizer.push();
+        this.tokenizerStack.push();
         const ast = tryFn();
-        if (ast === undefined) // failed
-            this.tokenizer.pop();
-        else
-            this.tokenizer.drop();
+        const saved = this.tokenizerStack.pop();
+        if (ast !== undefined) {
+            this.tokenizerStack.current = saved;
+        }
         return ast;
     }
 
@@ -443,10 +447,10 @@ export class Parser {
      * See also {@link tryParse}.
      */
     private temporaryParse<Ast>(text: string, parseFn: () => Ast | undefined): Ast | undefined {
-        this.tokenizer.push();
+        this.tokenizerStack.push();
         this.tokenizer.text = text;
         const ast = parseFn();
-        this.tokenizer.pop();
+        this.tokenizerStack.pop();
         return ast;
     }
 

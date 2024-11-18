@@ -108,40 +108,10 @@ enum QuoteType {
  * A simple C++ tokenizer.
  */
 export class Tokenizer {
-	stack: string[];
 	text: string;
 
 	constructor(text: string) {
-		this.stack = [];
 		this.text = text;
-	}
-
-	/** 
-	 * Push the text to be parsed onto a stack.
-	 */
-	public push() {
-		this.stack.push(this.text);
-	}
-
-	/** 
-	 * Pop the stack to restore the last `push`ed text.
-	 */
-	public pop() {
-		let stackText = this.stack.pop();
-		if (stackText !== undefined) {
-			this.text = stackText;
-		} else {
-			throw new Error(`Tokenizer.pop: stack is empty!`);
-		}
-	}
-
-	/**
-	 * Discard the last `push`ed text.
-	 */
-	public drop() {
-		if (this.stack.pop() === undefined) {
-			throw new Error(`Tokenizer.drop: stack is empty!`);
-		}
 	}
 
 	/** 
@@ -272,5 +242,38 @@ export class Tokenizer {
 			}
 		}
 		return new Token(str, TokenType.StringLiteral)
+	}
+}
+
+export class TokenizerStack {
+	private stack: Tokenizer[] = [];
+	private bottom: Tokenizer;
+
+	constructor(tokenizer: Tokenizer) {
+		this.bottom = tokenizer;
+	}
+
+	public push() {
+		let t = this.current;
+		if (t)
+			this.stack.push(t);
+	}
+
+	public pop() {
+		return this.stack.pop()!;
+	}
+
+	public get current(): Tokenizer {
+		const top = this.stack.at(this.stack.length - 1);
+		if (top === undefined)
+			return this.bottom;
+		return top;
+	}
+
+	public set current(value: Tokenizer) {
+		if (this.stack.length === 0)
+			this.bottom = value;
+		else
+			this.stack[this.stack.length - 1] = value;
 	}
 }
