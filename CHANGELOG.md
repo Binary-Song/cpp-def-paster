@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.2.0] - 2024-11-18
+
+## Added
+
+- Added support for removing default initializers in the definition.
+
 ## [1.1.0] - 2024-11-14
 
 ### Changed

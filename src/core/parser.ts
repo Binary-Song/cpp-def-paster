@@ -386,12 +386,12 @@ export class Parser {
             if (!semi)
                 return undefined;
             if (semi.type === TokenType.SemiColumn) {
-                // find the method name
+                // search for method name, from back to front
                 for (let i = segments.length - 1; i >= 0; i--) {
                     const currentSegment = segments[i];
                     if (currentSegment.type === SegmentType.FunctionLikeWithParen) {
                         // parse args
-                        const params = this.tryParse(() => this.parseFunctionParamList());
+                        const params = this.temporaryParse(currentSegment.text, () => this.parseFunctionParamList());
                         return { nameSegment: i, segments: segments, params: params };
                     }
                 }
@@ -419,15 +419,16 @@ export class Parser {
     /**
      * Attempts to parse an AST node using the provided parsing function.
      * The tokenizer state is saved before parsing. If parsing fails (i.e., `tryFn` returns `undefined`),
-     * the tokenizer is restored to the saved state.
+     * the tokenizer state is restored. Otherwise, the tokenizer state kept as-is.
+     * 
+     * See also {@link temporaryParse}.
      * 
      * @param tryFn - A function that attempts to parse an AST node and returns it, or `undefined` if parsing fails.
      * @returns The parsed AST node if successful, otherwise `undefined`.
+     * 
      */
-    private tryParse<Ast>(tryFn: () => Ast | undefined, overrideText: string | undefined = undefined) {
+    private tryParse<Ast>(tryFn: () => Ast | undefined) {
         this.tokenizer.push();
-        if (overrideText !== undefined)
-            this.tokenizer.text = overrideText;
         const ast = tryFn();
         if (ast === undefined) // failed
             this.tokenizer.pop();
@@ -436,6 +437,18 @@ export class Parser {
         return ast;
     }
 
+    /**
+     * Parses text without modifying the tokenizer state.
+     * 
+     * See also {@link tryParse}.
+     */
+    private temporaryParse<Ast>(text: string, parseFn: () => Ast | undefined): Ast | undefined {
+        this.tokenizer.push();
+        this.tokenizer.text = text;
+        const ast = parseFn();
+        this.tokenizer.pop();
+        return ast;
+    }
 
     /**
      * Parses a segment. See {@link Segment}.
@@ -600,7 +613,16 @@ export class Parser {
         if (eq === undefined || eq.type !== TokenType.Eq) {
             return undefined;
         }
-        // todo: parse init expr
+        let initializer;
+        if (initializer = this.tryParse(() => this.parseBracketContent(TokenType.LBrace, TokenType.RBrace))) {
+            return eq.text + initializer;
+        } else if (initializer = this.tryParse(() => this.parseQualifiedName())) {
+            return eq.text + initializer;
+        } else if (initializer = this.tryParse(() => this.parseToken(TokenType.Ident))
+        ) {
+            return eq.text + initializer.text;
+        }
+        return undefined;
     }
 
     private parseFunctionParam(): FuncParam | undefined
@@ -614,9 +636,18 @@ export class Parser {
             return undefined;
         }
 
-     
+        this.tryParse(() => this.parseFunctionDefaultParamValue());
 
         return { type: paramType, name: paramName.text };
+    }
+
+    private parseToken(tt: TokenType) : Token | undefined
+    {
+        const token = this.nextGoodToken();
+        if (token === undefined || token.type !== tt) {
+            return undefined;
+        }
+        return token;
     }
 }
 

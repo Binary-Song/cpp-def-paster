@@ -228,4 +228,46 @@ public:
 		defineMethodTest(classCtx, methodCtx, expected);
 	}
 	);
+	test('definition with param', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(int a);";
+		let expected = "void Happy::f(int a)";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with param 2', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(int a, std::vector<int> b);";
+		let expected = "void Happy::f(int a, std::vector<int> b)";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with param 3', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(int a, std::vector<int> b, int);";
+		let expected = "void Happy::f(int a, std::vector<int> b, int)";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with default param', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(int a = 0);";
+		let expected = "void Happy::f(int a)";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with default param 2', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(std::vector<int> x = {});";
+		let expected = "void Happy::f(std::vector<int> x)";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with default param 3', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(std::vector<int> a = {}, int b = 0);";
+		let expected = "void Happy::f(std::vector<int> a, int b)";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with default param (fallback to not removing default initializer)', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(std::vector<int> a = {}, int b = 1+1*2() );";
+		let expected = "void Happy::f(std::vector<int> a = {}, int b = 1+1*2() )";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
 });

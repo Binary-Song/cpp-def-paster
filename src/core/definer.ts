@@ -1,5 +1,5 @@
 import { Tokenizer, Token, TokenType } from './tokenizer'
-import { Parser, MethodDecl, ClassDecl } from './parser'
+import { Parser, MethodDecl, ClassDecl, Segment, ClassName } from './parser'
 
 /**
  * The definition will be generated based on these strings.
@@ -71,19 +71,73 @@ export class Definer {
 		return allDefs;
 	}
 
+	private classNameToStr(className: ClassName): string {
+		let str = className.name;
+		if (className.args === undefined) {
+			return str;
+		}
+		str += "<";
+		let args = "";
+		let isFirst = true;
+		for (let arg of className.args) {
+			if (!isFirst) {
+				args += ", ";
+			}
+			args += this.classNameToStr(arg);
+			isFirst = false;
+		}
+		args = args.trim();
+		str += args + ">"
+		return str;
+	}
+
+	private handleMethodNameSegmentFallback(nameSegment: Segment, classDecl: ClassDecl, methodDecl: MethodDecl): string {
+		let decl = classDecl.className + "::" + nameSegment.text;
+		return decl;
+	}
+
+	private handleMethodNameSegment(nameSegment: Segment, classDecl: ClassDecl, methodDecl: MethodDecl): string {
+		if (methodDecl.params === undefined) {
+			return this.handleMethodNameSegmentFallback(nameSegment, classDecl, methodDecl);
+		}
+		// if we can parse the arg list
+		const tokenizer = new Tokenizer(nameSegment.text);
+		let token = tokenizer.next();
+		if (token === undefined || token.type !== TokenType.Ident) {
+			return this.handleMethodNameSegmentFallback(nameSegment, classDecl, methodDecl);
+		}
+		let paramListStr = "";
+		let firstParam = true;
+		for (let param of methodDecl.params) {
+			if (!firstParam) {
+				paramListStr += ", ";
+			}
+			paramListStr += this.classNameToStr(param.type) + " " + param.name;
+			firstParam = false;
+		}
+		let decl = classDecl.className + "::" + token.text + "(" + paramListStr + ")";
+		return decl;
+	}
+
 	private defineMethod(classDecl: ClassDecl, methodDecl: MethodDecl): string {
 		let index = 0;
 		let decl = "";
 		for (let segment of methodDecl.segments) {
+
+			const segmentText = segment.text;
+			// name of the method
 			if (index === methodDecl.nameSegment) {
-				decl += classDecl.className;
-				decl += "::";
-			}
-			let newText = segment.text;
-			if (!this.definerConfig.discardedSegments.includes(newText)) {
-				decl += newText;
+				decl += this.handleMethodNameSegment(segment, classDecl, methodDecl);
 				decl += " ";
 			}
+			else {
+				// other segments
+				if (!this.definerConfig.discardedSegments.includes(segmentText)) {
+					decl += segmentText;
+					decl += " ";
+				}
+			}
+
 			index++;
 		}
 		decl = decl.trim();
