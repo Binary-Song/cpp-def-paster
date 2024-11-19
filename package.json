@@ -33,11 +33,13 @@
       {
         "command": "cpp-def-paster.copyDefinition",
         "key": "ctrl+alt+c",
+        "mac": "cmd+alt+c",
         "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c)"
       },
       {
         "command": "cpp-def-paster.magicCopy",
         "key": "ctrl+c",
+        "mac": "cmd+c",
         "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c) && config.cpp-def-paster.magicCopy.enabled"
       }
     ],
