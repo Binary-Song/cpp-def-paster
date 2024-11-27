@@ -97,10 +97,11 @@ export class Definer {
 	}
 
 	private handleMethodNameSegment(nameSegment: Segment, classDecl: ClassDecl, methodDecl: MethodDecl): string {
+		// if we failed to parse the param list
 		if (methodDecl.params === undefined) {
 			return this.handleMethodNameSegmentFallback(nameSegment, classDecl, methodDecl);
 		}
-		// if we can parse the arg list
+		// if we parsed the param list
 		const tokenizer = new Tokenizer(nameSegment.text);
 		let token = tokenizer.next();
 		if (token === undefined || token.type !== TokenType.Ident) {
@@ -109,12 +110,14 @@ export class Definer {
 		let paramListStr = "";
 		let firstParam = true;
 		for (let param of methodDecl.params) {
-			if (!firstParam) {
-				paramListStr += ", ";
+			if (firstParam) {
+				paramListStr += param.text;
+			} else {
+				paramListStr += ", " + param.text;
 			}
-			paramListStr += this.classNameToStr(param.type) + " " + param.name;
 			firstParam = false;
 		}
+		paramListStr = paramListStr.trim();
 		let decl = classDecl.className + "::" + token.text + "(" + paramListStr + ")";
 		return decl;
 	}

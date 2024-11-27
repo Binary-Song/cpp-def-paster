@@ -114,6 +114,10 @@ export class Tokenizer {
 		this.text = text;
 	}
 
+	public clone() {
+		return new Tokenizer(this.text);
+	}
+
 	/** 
 	 * Adds to the front of text.
 	 */
@@ -256,11 +260,17 @@ export class TokenizerStack {
 	public push() {
 		let t = this.current;
 		if (t)
-			this.stack.push(t);
+			this.stack.push(t.clone());
 	}
 
 	public pop() {
 		return this.stack.pop()!;
+	}
+
+	public apply() {
+		let cur = this.stack.pop()!;
+		this.stack.pop()!;
+		this.stack.push(cur);
 	}
 
 	public get current(): Tokenizer {

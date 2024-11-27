@@ -41,7 +41,7 @@ suite('definer', () => {
 	test('definition 6', () => {
 		let classCtx = "class Happy final:d,e{";
 		let methodCtx = "virtual void f(int ) const ;";
-		let expected =  "void Happy::f(int ) const";
+		let expected =  "void Happy::f(int) const";
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
 	test('definition 7', () => {
@@ -268,6 +268,12 @@ public:
 		let classCtx = "class Happy: public A, protected B, private C {";
 		let methodCtx = "void f(std::vector<int> a = {}, int b = 1+1*2() );";
 		let expected = "void Happy::f(std::vector<int> a = {}, int b = 1+1*2() )";
+		defineMethodTest(classCtx, methodCtx, expected);
+	});
+	test('definition with default param 4', () => {
+		let classCtx = "class Happy: public A, protected B, private C {";
+		let methodCtx = "void f(const std::vector<int>& a = {}, int b = 1+1*2() );";
+		let expected = "void Happy::f(const std::vector<int>& a = {}, int b = 1+1*2() )";
 		defineMethodTest(classCtx, methodCtx, expected);
 	});
 });

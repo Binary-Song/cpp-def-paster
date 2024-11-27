@@ -68,12 +68,12 @@ export enum SegmentType {
  */
 export type Segment = { text: string, type: SegmentType }
 
-export type FuncParam = { name: string, type: ClassName }
+export type FuncParam = { text: string }
 
 /**
  * A method declaration.
  */
-export type MethodDecl = { nameSegment: number, segments: Segment[], params: FuncParam[] | undefined }
+export type MethodDecl = { nameSegment: number | undefined, segments: Segment[], params: FuncParam[] | undefined }
 
 /**
  * Parses part of the C++ language.
@@ -108,18 +108,25 @@ export class Parser {
         return undefined;
     }
 
+    private peekNextGoodToken() :  Token | undefined {
+        let nextToken = this.nextGoodToken();
+        if (nextToken === undefined)
+            return undefined;
+        this.tokenizer.prepend(nextToken.text);
+        return nextToken;
+    }
+
     public parseTextUpToCursor(): ClassDecl | undefined {
-        let tokenizer = this.tokenizer;
         let token;
         let scopeStack: { classDecl: ClassDecl | undefined }[] = [];
         let limit = 200000;
-        while ((token = tokenizer.next()) !== undefined) {
+        while ((token = this.tokenizer.next()) !== undefined) {
             if (limit-- <= 0)
                 return undefined;
             if (token.type == TokenType.ClassKeyword) {
                 let tokenText = token.text;
                 let classDecl = this.tryParse(() => {
-                    tokenizer.prepend(tokenText);
+                    this.tokenizer.prepend(tokenText);
                     return this.parseClassDecl();
                 });
                 if (classDecl) {
@@ -378,6 +385,25 @@ export class Parser {
         return args;
     }
 
+    private findFunctionNameSegment(segments: Segment[]): { segIdx: number, params: FuncParam[] | undefined } | undefined {
+        for (let i = segments.length - 1; i >= 0; i--) {
+            const currentSegment = segments[i];
+            if (currentSegment.type === SegmentType.FunctionLikeWithParen) {
+                // parse args
+                const params = this.temporaryParse(currentSegment.text, () => this.parseFunctionParamList());
+                if (params !== undefined)
+                    return {segIdx: i, params: params};
+            }
+        }
+        for (let i = segments.length - 1; i >= 0; i--) {
+            const currentSegment = segments[i];
+            if (currentSegment.type === SegmentType.FunctionLikeWithParen) {
+                return {segIdx: i, params: undefined};
+            }
+        }
+        return undefined;
+    }
+
     /**
      * Parses a method declaration. To simplify things, we see methods as an array of `Segment`s. The last segment with a pair of parentheses is considered to be the method's name.
      */
@@ -390,16 +416,14 @@ export class Parser {
             if (!semi)
                 return undefined;
             if (semi.type === TokenType.SemiColumn) {
-                // search for method name, from back to front
-                for (let i = segments.length - 1; i >= 0; i--) {
-                    const currentSegment = segments[i];
-                    if (currentSegment.type === SegmentType.FunctionLikeWithParen) {
-                        // parse args
-                        const params = this.temporaryParse(currentSegment.text, () => this.parseFunctionParamList());
-                        return { nameSegment: i, segments: segments, params: params };
-                    }
+                // search for segment that contains the method name, from back to front
+                let findSegRes  = this.findFunctionNameSegment(segments);
+                if (findSegRes !== undefined) {
+                    return { nameSegment: findSegRes.segIdx, segments: segments, params: findSegRes.params };
                 }
-                return undefined;
+                // cannot find the method name
+                // return a less detailed version
+                return { nameSegment: undefined, segments: segments, params: undefined };
             } else {
                 this.tokenizer.prepend(semi.text);
             }
@@ -435,10 +459,12 @@ export class Parser {
         this.tokenizerStack.push();
         const ast = tryFn();
         const saved = this.tokenizerStack.pop();
-        if (ast !== undefined) {
+        if (ast === undefined) {
+            return undefined;
+        } else {
             this.tokenizerStack.current = saved;
+            return ast;
         }
-        return ast;
     }
 
     /**
@@ -481,6 +507,8 @@ export class Parser {
         switch (token.type) {
             case TokenType.Ampersand:
             case TokenType.Star:
+            case TokenType.Comma:
+            case TokenType.Eq:
                 return { text: token.text, type: SegmentType.Symbol };
         }
         return undefined;
@@ -502,16 +530,32 @@ export class Parser {
         return undefined;
     }
 
+    private getRBracketType(leftBracket: TokenType): TokenType | undefined {
+        switch (leftBracket) {
+            case TokenType.LAngleBracket:
+                return TokenType.RAngleBracket;
+            case TokenType.LBracket:
+                return TokenType.RBracket;
+            case TokenType.LParen:
+                return TokenType.RParen;
+        }
+        return undefined;
+    }
+
     /**
      * See {@link SegmentType.AttributeLike}
      */
-    private parseAttributeLikeSegment(): Segment | undefined {
+    private parseAttributeLikeSegment(allowedLBrackets: TokenType[] = [TokenType.LBracket]): Segment | undefined {
         const token = this.nextGoodToken();
         if (!token)
             return undefined;
-        if (token.type === TokenType.LBracket) {
+        if (token.type in allowedLBrackets) {
+            const leftBracket = token.type;
+            const rightBracket = this.getRBracketType(token.type);
+            if (!rightBracket)
+                return undefined;
             this.tokenizer.prepend(token.text);
-            const content = this.parseBracketContent(TokenType.LBracket, TokenType.RBracket);
+            const content = this.parseBracketContent(leftBracket, rightBracket);
             if (!content)
                 return undefined;
             return { text: content, type: SegmentType.AttributeLike };
@@ -589,8 +633,7 @@ export class Parser {
     /**
      *  Parses function name and param list.
      */
-    private parseFunctionParamList()
-    {
+    private parseFunctionParamList() {
         const funcName = this.nextGoodToken();
         if (funcName === undefined || funcName.type !== TokenType.Ident) {
             return undefined;
@@ -599,10 +642,10 @@ export class Parser {
         if (leftParen === undefined || leftParen.type !== TokenType.LParen) {
             return undefined;
         }
-        
+
         // actual param list
         const params = this.parseCommaSeparatedList(() => this.parseFunctionParam());
-        
+
         const rightParen = this.nextGoodToken();
         if (rightParen === undefined || rightParen.type !== TokenType.RParen) {
             return undefined;
@@ -610,48 +653,61 @@ export class Parser {
 
         return params;
     }
-
-    private parseFunctionDefaultParamValue(): string | undefined
-    {
-        const eq = this.nextGoodToken();
-        if (eq === undefined || eq.type !== TokenType.Eq) {
-            return undefined;
+    private parseSegmentForFunctionParam(): Segment | undefined {
+        let segment;
+        if (segment = this.tryParse(() => this.parseNamedSegment())) {
+            return segment;
         }
-        let initializer;
-        if (initializer = this.tryParse(() => this.parseBracketContent(TokenType.LBrace, TokenType.RBrace))) {
-            return eq.text + initializer;
-        } else if (initializer = this.tryParse(() => this.parseQualifiedName())) {
-            return eq.text + initializer;
-        } else if (initializer = this.tryParse(() => this.parseToken(TokenType.Ident))
-        ) {
-            return eq.text + initializer.text;
+        if (segment = this.tryParse(() => this.parseAttributeLikeSegment([TokenType.LBracket, TokenType.LParen]))) {
+            return segment;
+        }
+        if (segment = this.tryParse(() => this.parseSymbolSegment())) {
+            return segment;
+        }
+        let text;
+        if (text = this.tryParse(() => this.parseBracketContent(TokenType.LBrace, TokenType.RBrace))) {
+            return { text: text, type: SegmentType.AttributeLike };
         }
         return undefined;
     }
 
-    private parseFunctionParam(): FuncParam | undefined
-    {
-        const paramType = this.parseClassName();
-        if (paramType === undefined)
-            return undefined;
-      
-        const paramName = this.nextGoodToken();
-        if (paramName === undefined || paramName.type !== TokenType.Ident) {
-            return undefined;
+    // parse param, e.g. `int a = 1`
+    private parseFunctionParam(): FuncParam | undefined {
+        let text = "";
+        let isParsingInitializer = false;
+        let iter = 0;
+        while (1) {
+            iter++;
+            // peek next token, if it is a `)` or a `,`, we are done
+            let nextToken = this.peekNextGoodToken();
+            if (!nextToken)
+                return undefined;
+            if (nextToken.type === TokenType.RParen || nextToken.type === TokenType.Comma) {
+                const t = text.trim();
+                return { text: t };
+            } 
+            // if we see an `=`, parse initializer.
+            else if (nextToken.type === TokenType.Eq && iter !== 1) {
+                isParsingInitializer = true;
+            }
+            // parse segment
+            let seg = this.parseSegmentForFunctionParam();
+            if (seg === undefined) {
+                return undefined;
+            }
+            if (!isParsingInitializer) {
+                text += seg.text + " ";
+            }
         }
-
-        this.tryParse(() => this.parseFunctionDefaultParamValue());
-
-        return { type: paramType, name: paramName.text };
+        return undefined;
     }
 
-    private parseToken(tt: TokenType) : Token | undefined
-    {
+    private parseToken(tt: TokenType): Token | undefined {
         const token = this.nextGoodToken();
         if (token === undefined || token.type !== tt) {
             return undefined;
         }
         return token;
     }
-}
 
+}
