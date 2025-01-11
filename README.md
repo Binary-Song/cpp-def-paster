@@ -4,9 +4,9 @@
 
 ## Usage
 
-Select a function prototype from **RIGHT to LEFT**, then press `Ctrl`+`C` to copy its definition. If you select in the opposite direction, `Ctrl`+`C` will function normally.
+Select a function prototype then press `Ctrl`+`Alt`+`C` to copy its definition. 
 
-![demo](img/magic-copy-demo.gif)
+![demo](img/demo.gif)
 
 ## Commands and Settings
 
@@ -29,9 +29,9 @@ PRs are welcome!
 
 ## 使用方法
 
-**从右到左**选择一个函数原型，然后按 `Ctrl`+`C` 复制其定义。如果从左到右选择，`Ctrl`+`C` 将正常复制。
+**从右到左**选择一个函数原型，然后按 `Ctrl`+`Alt`+`C` 复制其定义。
 
-![demo](img/magic-copy-demo.gif)
+![demo](img/demo.gif)
 
 
 ## 命令和设置

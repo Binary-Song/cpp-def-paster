@@ -48,7 +48,7 @@
       "properties": {
         "cpp-def-paster.magicCopy.enabled": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "title": "%config.magicCopy.enabled.title%",
           "description": "%config.magicCopy.enabled.desc%"
         },
